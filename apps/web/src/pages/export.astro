@@ -1,0 +1,483 @@
+---
+/**
+ * Audio Export Page — Records ArgoBeat sessions for offline analysis.
+ *
+ * Usage: Open /export in browser, select mood, click Record, wait, click Stop.
+ * Downloads a WebM audio file plus a JSON metadata sidecar.
+ *
+ * CLI workflow:
+ *   1. Open https://argobeat.app/export (or localhost:4321/export)
+ *   2. Select mood + duration
+ *   3. Click "Record & Play"
+ *   4. Wait for session to complete (or click Stop early)
+ *   5. WebM + JSON files auto-download
+ *   6. Convert WebM to WAV with ffmpeg, then run tools/analyze_audio.py
+ */
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="ArgoBeat — Audio Export">
+  <div class="export-shell">
+    <h1>Audio Export</h1>
+    <p class="subtitle">Record sessions for offline analysis with AI tools</p>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="export-mood">Mood</label>
+        <select id="export-mood">
+          <option value="focus">Focus (Beta 15 Hz)</option>
+          <option value="deepWork">Deep Work (Beta 18 Hz)</option>
+          <option value="relax">Relax (Alpha 10 Hz)</option>
+          <option value="meditate">Meditate (Theta 6 Hz)</option>
+          <option value="sleep">Sleep (Delta 2 Hz)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="export-duration">Duration (seconds)</label>
+        <input type="number" id="export-duration" value="30" min="5" max="300" step="5" />
+      </div>
+
+      <div class="control-group">
+        <label for="export-source">Source</label>
+        <select id="export-source">
+          <option value="music">Music Only (for beat analysis)</option>
+          <option value="both" selected>Both (Music + Soundscape)</option>
+          <option value="soundscape">Soundscapes Only</option>
+        </select>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-record" class="btn btn-primary">Record & Play</button>
+        <button id="btn-stop" class="btn btn-danger" disabled>Stop & Download</button>
+      </div>
+    </div>
+
+    <div class="status" id="export-status">Ready — select settings and click Record</div>
+
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="info">
+      <h2>After Export — AI Analysis Tools</h2>
+      <pre><code set:html={`# Frequency &amp; quality analysis (included in repo)
+python3 tools/analyze_audio.py --file session.wav --mood focus --target-hz 15
+
+# Spectral and entrainment-marker analysis
+pnpm audio:analyze --file session.wav --mood focus --target-hz 15
+
+# Beat tracking with librosa
+# pip install librosa numpy scipy
+
+# Convert webm to wav for analysis:
+# ffmpeg -i argobeat-focus-30s.webm session.wav
+
+# Feed spectrogram to an AI vision tool for analysis
+# Or use Essentia for detailed MIR analysis:
+# pip install essentia`} /></pre>
+
+      <h3>Recommended AI Tools for Audio Analysis</h3>
+      <ul>
+        <li><strong>GPT-4o</strong> — Can directly listen to audio files and describe frequency issues, beat problems, harshness. Upload the WAV and ask "analyze this for frequency balance and beat quality"</li>
+        <li><strong>Essentia (MTG Barcelona)</strong> — Open-source music analysis: tempo, key, loudness, spectral centroid, beat positions. <code>pip install essentia</code></li>
+        <li><strong>Sonic Visualiser</strong> — Free desktop tool with spectral view, frequency tracking, beat visualization</li>
+        <li><strong>Audacity</strong> — Free, has Analyze → Plot Spectrum for frequency peaks, and spectrogram view</li>
+        <li><strong>madmom</strong> — Specialized beat/tempo analysis. <code>pip install madmom</code></li>
+        <li><strong>tools/analyze_audio.py</strong> — Already in repo, measures centroid, harmonics, repetition, LUFS</li>
+      </ul>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { ArgoBeatEngine } from '@argobeat/engine';
+  import { LiveScoreTracker } from '../lib/live-score';
+
+  let engine: any = null;
+  let mediaRecorder: any = null;
+  let chunks: any[] = [];
+  let startTime = 0;
+  let durationS = 30;
+  let progressInterval: any = null;
+  let exportMetadata: Record<string, any> | null = null;
+  let exportEventHandlers: Array<[string, (...args: any[]) => void]> = [];
+  let scoreTracker: LiveScoreTracker | null = null;
+  let scoreLoopId: number | null = null;
+  let scoreTimeline: Array<Record<string, any>> = [];
+  let lastScoreTimelineAt = 0;
+
+  const btnRecord = document.getElementById('btn-record')! as HTMLButtonElement;
+  const btnStop = document.getElementById('btn-stop')! as HTMLButtonElement;
+  const statusEl = document.getElementById('export-status')!;
+  const progressFill = document.getElementById('progress-fill')!;
+  const moodSelect = document.getElementById('export-mood')! as HTMLSelectElement;
+  const durationInput = document.getElementById('export-duration')! as HTMLInputElement;
+  const sourceSelect = document.getElementById('export-source')! as HTMLSelectElement;
+
+  function stopScoreLoop() {
+    if (scoreLoopId !== null) {
+      cancelAnimationFrame(scoreLoopId);
+      scoreLoopId = null;
+    }
+  }
+
+  function startScoreLoop() {
+    if (!scoreTracker || !exportMetadata) return;
+    stopScoreLoop();
+
+    const step = () => {
+      if (!scoreTracker || !exportMetadata) {
+        scoreLoopId = null;
+        return;
+      }
+
+      const snapshot = scoreTracker.sample(performance.now());
+      exportMetadata.liveScoreSummary = snapshot;
+
+      const now = Date.now();
+      if (now - lastScoreTimelineAt >= 1000) {
+        scoreTimeline.push({
+          atMs: now - startTime,
+          overallScore: snapshot.overallScore,
+          fitScore: snapshot.fitScore,
+          fatigueRisk: snapshot.fatigueRisk,
+          repetitionRisk: snapshot.repetitionRisk,
+          headroomScore: snapshot.headroomScore,
+          pulseStability: snapshot.pulseStability,
+          reasons: snapshot.reasons,
+        });
+        exportMetadata.liveScoreTimeline = scoreTimeline;
+        lastScoreTimelineAt = now;
+      }
+
+      scoreLoopId = requestAnimationFrame(step);
+    };
+
+    scoreLoopId = requestAnimationFrame(step);
+  }
+
+  btnRecord.addEventListener('click', async () => {
+    try {
+      btnRecord.disabled = true;
+      btnStop.disabled = false;
+      statusEl.textContent = 'Initializing engine...';
+
+      durationS = parseInt(durationInput.value) || 30;
+      const mood = moodSelect.value;
+      const source = sourceSelect.value as 'music' | 'both' | 'soundscape';
+
+      // Initialize engine
+      if (!engine) {
+        engine = new ArgoBeatEngine();
+        await engine.initialize();
+        engine.on?.('musicTrackChange', (from: string | null, to: string) => {
+          exportMetadata?.events?.push({ type: 'musicTrackChange', from, to, atMs: Date.now() - startTime });
+        });
+        engine.on?.('variationChange', (from: string | null, to: string) => {
+          exportMetadata?.events?.push({ type: 'variationChange', from, to, atMs: Date.now() - startTime });
+        });
+      }
+
+      // Get the audio context and create a media stream destination.
+      const ctx = engine.getAudioContext();
+      if (!ctx) throw new Error('No AudioContext available');
+
+      const streamDest = ctx.createMediaStreamDestination();
+
+      // Start playback so the analyser tap exists, then wire it to recorder.
+      await engine.play(mood as any, { source });
+      const analyser = engine.getAnalyser();
+      if (!analyser) throw new Error('No analyser available');
+      analyser.connect(streamDest);
+      const startedState = engine.getState();
+      exportMetadata = {
+        app: 'argobeat',
+        version: 2,
+        mood,
+        source,
+        requestedDurationSeconds: durationS,
+        startedAt: new Date().toISOString(),
+        audioMimeType: '',
+        stateAtStart: startedState,
+        events: [],
+        liveScoreSummary: null,
+        liveScoreTimeline: [],
+        liveScoreTimelineCadenceMs: 1000,
+      };
+      scoreTracker = new LiveScoreTracker(analyser, mood as any, startedState?.sessionHz ?? null);
+      scoreTimeline = [];
+      lastScoreTimelineAt = 0;
+      for (const [eventName, handler] of exportEventHandlers) {
+        engine.off(eventName, handler);
+      }
+      exportEventHandlers = [
+        ['musicTrackChange', (from: string | null, to: string) => {
+          exportMetadata?.events?.push({ type: 'musicTrackChange', from, to, at: new Date().toISOString() });
+        }],
+        ['variationChange', (from: string | null, to: string) => {
+          exportMetadata?.events?.push({ type: 'variationChange', from, to, at: new Date().toISOString() });
+        }],
+      ];
+      for (const [eventName, handler] of exportEventHandlers) {
+        engine.on(eventName, handler);
+      }
+
+      // Set up MediaRecorder
+      chunks = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm';
+      if (exportMetadata) exportMetadata.audioMimeType = mimeType;
+
+      mediaRecorder = new MediaRecorder(streamDest.stream, { mimeType });
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        stopScoreLoop();
+        const stoppedAt = new Date().toISOString();
+        if (exportMetadata) {
+          exportMetadata.stoppedAt = stoppedAt;
+          exportMetadata.stateAtStop = engine?.getState?.() ?? null;
+          exportMetadata.liveScoreSummary = scoreTracker?.getLatestSnapshot() ?? exportMetadata.liveScoreSummary ?? null;
+          exportMetadata.liveScoreTimeline = scoreTimeline;
+        }
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const basename = `argobeat-${mood}-${durationS}s-${Date.now()}`;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${basename}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (exportMetadata) {
+          const metadataBlob = new Blob([JSON.stringify(exportMetadata, null, 2)], { type: 'application/json' });
+          const metadataUrl = URL.createObjectURL(metadataBlob);
+          const meta = document.createElement('a');
+          meta.href = metadataUrl;
+          meta.download = `${basename}.json`;
+          document.body.appendChild(meta);
+          meta.click();
+          document.body.removeChild(meta);
+          URL.revokeObjectURL(metadataUrl);
+        }
+
+        const targetHz = exportMetadata?.stateAtStart?.sessionHz ?? 'TARGET';
+        statusEl.textContent = `Exported ${basename}.webm + .json with live score snapshots. Convert: ffmpeg -i ${basename}.webm session.wav; analyze: python3 tools/analyze_audio.py --file session.wav --mood ${mood} --target-hz ${targetHz}`;
+        btnRecord.disabled = false;
+        btnStop.disabled = true;
+        progressFill.style.width = '0%';
+        scoreTracker = null;
+        scoreTimeline = [];
+      };
+
+      // Start recording
+      mediaRecorder.start(100); // collect data every 100ms
+      startTime = Date.now();
+      if (exportMetadata) exportMetadata.recordingStartedAt = new Date().toISOString();
+      startScoreLoop();
+
+      statusEl.textContent = `Recording ${mood} for ${durationS}s...`;
+
+      // Progress bar
+      progressInterval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const pct = Math.min(100, (elapsed / durationS) * 100);
+        progressFill.style.width = `${pct}%`;
+        statusEl.textContent = `Recording: ${Math.floor(elapsed)}s / ${durationS}s`;
+
+        if (elapsed >= durationS) {
+          stopRecording();
+        }
+      }, 250);
+
+    } catch (err) {
+      console.error('Export failed:', err);
+      stopScoreLoop();
+      scoreTracker = null;
+      scoreTimeline = [];
+      statusEl.textContent = `Error: ${(err as any).message}`;
+      btnRecord.disabled = false;
+      btnStop.disabled = true;
+    }
+  });
+
+  btnStop.addEventListener('click', () => stopRecording());
+
+  function stopRecording() {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+    stopScoreLoop();
+    if (engine) {
+      engine.stop();
+    }
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    statusEl.textContent = 'Processing download...';
+  }
+</script>
+
+<style>
+  .export-shell {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 2rem;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 2rem;
+  }
+
+  .controls {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .control-group {
+    margin-bottom: 1rem;
+  }
+
+  .control-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 0.25rem;
+  }
+
+  select, input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+    color: #e0e0e0;
+    font-size: 0.95rem;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .btn-primary {
+    background: #4ade80;
+    color: #000;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #22c55e;
+  }
+
+  .btn-danger {
+    background: #f87171;
+    color: #000;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: #ef4444;
+  }
+
+  .status {
+    padding: 0.75rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 1rem;
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #4ade80;
+    border-radius: 3px;
+    transition: width 0.25s linear;
+  }
+
+  .info {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  .info h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  .info h3 {
+    font-size: 0.95rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .info pre {
+    background: rgba(0,0,0,0.4);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .info ul {
+    padding-left: 1.25rem;
+  }
+
+  .info li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .info code {
+    background: rgba(255,255,255,0.08);
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+</style>

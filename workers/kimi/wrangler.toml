@@ -1,0 +1,10 @@
+name = "argobeat-kimi"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Update the route pattern and zone_name to match your own domain before deploying.
+[[routes]]
+pattern = "your-domain.com/kimi/*"
+zone_name = "your-domain.com"

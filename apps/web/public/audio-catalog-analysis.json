@@ -1,0 +1,3786 @@
+{
+  "schema": "argobeat.audioCatalogAnalysis.v1",
+  "generated_at": "2026-04-30T16:42:02.563529+00:00",
+  "source_manifest": "packages/@argobeat/engine/src/soundscape/audio-manifest.ts",
+  "analysis_method": "local ffmpeg decode plus numpy feature extraction and transparent mood-fit heuristics",
+  "summary": {
+    "music_count": 21,
+    "soundscape_count": 30,
+    "sleep_music_wrong_or_usable": [
+      "ramen",
+      "ghosts",
+      "busted-jazz",
+      "happy-little-off",
+      "something-in-the-air",
+      "cellar-door",
+      "deja-vu",
+      "mixed-signals",
+      "puppy-love",
+      "seasons-change",
+      "small-towns",
+      "new-shoes",
+      "yesterday",
+      "dreams",
+      "shut-up-or-shut-in",
+      "morning-coffee",
+      "mundane",
+      "glad-stuck-inside",
+      "letting-go",
+      "love",
+      "anxiety"
+    ],
+    "sleep_soundscape_approved": [],
+    "sleep_soundscape_auto_rejected": [
+      "wind-gentle",
+      "rain-spectacular",
+      "ocean-chill-coast",
+      "ocean-gentle-beach",
+      "ocean-waves",
+      "wind-soft",
+      "rain-thunderstorm",
+      "ocean-zen-waves",
+      "rain-noise"
+    ],
+    "sleep_stream_rejected": [
+      "stream-close",
+      "stream-creek",
+      "stream-gentle",
+      "stream-trickling"
+    ],
+    "meditate_soundscape_approved": [
+      "space-glass-aquaphone",
+      "wind-gentle",
+      "space-ambience",
+      "space-scifi",
+      "wind-noise",
+      "space-dark",
+      "wind-soft"
+    ],
+    "meditate_soundscape_auto_rejected": [],
+    "meditate_stream_rejected": [
+      "stream-close",
+      "stream-creek",
+      "stream-gentle",
+      "stream-trickling"
+    ],
+    "sleep_rms_target_db": [
+      -38,
+      -19
+    ],
+    "stream_sleep_or_meditate_rejected": [
+      "stream-close",
+      "stream-creek",
+      "stream-gentle",
+      "stream-trickling"
+    ],
+    "known_catalog_gaps": [
+      "No file-backed singing bowl, gong, or chime catalog assets are deployed.",
+      "Current shared music is rejected for Sleep; Sleep is soundscape-only until true sleep music is added.",
+      "Sleep auto soundscapes still need lower-transient, longer, professionally looped source files.",
+      "This report is objective audio-feature QA, not proof of listener outcomes."
+    ]
+  },
+  "mood_rules": {
+    "focus": {
+      "centroid": [
+        850,
+        1800
+      ],
+      "rms": [
+        -26,
+        -12
+      ],
+      "high_max": 0.36,
+      "transient_max": 5.5,
+      "duration_min": 60
+    },
+    "deepWork": {
+      "centroid": [
+        700,
+        1500
+      ],
+      "rms": [
+        -28,
+        -13
+      ],
+      "high_max": 0.3,
+      "transient_max": 4.8,
+      "duration_min": 90
+    },
+    "relax": {
+      "centroid": [
+        450,
+        1250
+      ],
+      "rms": [
+        -32,
+        -15
+      ],
+      "high_max": 0.24,
+      "transient_max": 4.0,
+      "duration_min": 90
+    },
+    "meditate": {
+      "centroid": [
+        350,
+        1050
+      ],
+      "rms": [
+        -34,
+        -16
+      ],
+      "high_max": 0.18,
+      "transient_max": 3.2,
+      "duration_min": 120
+    },
+    "sleep": {
+      "centroid": [
+        250,
+        850
+      ],
+      "rms": [
+        -38,
+        -19
+      ],
+      "high_max": 0.12,
+      "transient_max": 2.5,
+      "duration_min": 180
+    }
+  },
+  "auto_categories": {
+    "focus": [
+      "forest",
+      "rain",
+      "stream"
+    ],
+    "deepWork": [
+      "forest",
+      "rain",
+      "stream"
+    ],
+    "relax": [
+      "fire",
+      "forest",
+      "ocean",
+      "rain",
+      "stream",
+      "wind"
+    ],
+    "meditate": [
+      "space",
+      "wind"
+    ],
+    "sleep": [
+      "ocean",
+      "rain",
+      "wind"
+    ]
+  },
+  "music": [
+    {
+      "id": "anxiety",
+      "name": "Anxiety",
+      "path": "apps/web/public/audio/music/shared/anxiety.mp3",
+      "metrics": {
+        "duration_s": 141.8,
+        "rms_db": -16.24,
+        "peak_dbfs": 2.46,
+        "crest_factor": 8.6,
+        "transient_index": 61.95,
+        "clipped_samples": 8132,
+        "short_loop_similarity": 0.9998,
+        "centroid_hz": 437.9,
+        "spectral_spread_hz": 382.7,
+        "low_ratio": 0.5376,
+        "mid_ratio": 0.4613,
+        "high_ratio": 0.0011
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 437.9 Hz outside 850-1800 Hz",
+            "transient index 61.95 above 5.5",
+            "peak 2.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 65,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 437.9 Hz outside 700-1500 Hz",
+            "transient index 61.95 above 4.8",
+            "peak 2.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "transient index 61.95 above 4.0",
+            "peak 2.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "transient index 61.95 above 3.2",
+            "peak 2.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 68,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 61.95 above 2.5",
+            "peak 2.46 dBFS should be <= -1 dBFS",
+            "duration 141.8s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 20,
+        "deepWork": 8,
+        "relax": 20,
+        "meditate": 8,
+        "sleep": 12
+      }
+    },
+    {
+      "id": "busted-jazz",
+      "name": "Busted Jazz",
+      "path": "apps/web/public/audio/music/shared/busted-jazz.mp3",
+      "metrics": {
+        "duration_s": 149.3,
+        "rms_db": -8.33,
+        "peak_dbfs": 3.02,
+        "crest_factor": 3.69,
+        "transient_index": 7.61,
+        "clipped_samples": 81143,
+        "short_loop_similarity": 0.9994,
+        "centroid_hz": 389.9,
+        "spectral_spread_hz": 590.8,
+        "low_ratio": 0.7879,
+        "mid_ratio": 0.1864,
+        "high_ratio": 0.0257
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 389.9 Hz outside 850-1800 Hz",
+            "loudness -8.33 dB outside -26 to -12 dB",
+            "transient index 7.61 above 5.5",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 389.9 Hz outside 700-1500 Hz",
+            "loudness -8.33 dB outside -28 to -13 dB",
+            "transient index 7.61 above 4.8",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 65,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -8.33 dB outside -32 to -15 dB",
+            "transient index 7.61 above 4.0",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -8.33 dB outside -34 to -16 dB",
+            "transient index 7.61 above 3.2",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 60,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -8.33 dB outside -38 to -19 dB",
+            "transient index 7.61 above 2.5",
+            "peak 3.02 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 11,
+        "deepWork": 9,
+        "relax": 17,
+        "meditate": 19,
+        "sleep": 19
+      }
+    },
+    {
+      "id": "cellar-door",
+      "name": "Cellar Door",
+      "path": "apps/web/public/audio/music/shared/cellar-door.mp3",
+      "metrics": {
+        "duration_s": 132.4,
+        "rms_db": -9.84,
+        "peak_dbfs": 3.22,
+        "crest_factor": 4.5,
+        "transient_index": 22.37,
+        "clipped_samples": 47142,
+        "short_loop_similarity": 0.9992,
+        "centroid_hz": 390.1,
+        "spectral_spread_hz": 656.8,
+        "low_ratio": 0.7432,
+        "mid_ratio": 0.2368,
+        "high_ratio": 0.02
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 58,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 390.1 Hz outside 850-1800 Hz",
+            "transient index 22.37 above 5.5",
+            "peak 3.22 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 59,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 390.1 Hz outside 700-1500 Hz",
+            "loudness -9.84 dB outside -28 to -13 dB",
+            "transient index 22.37 above 4.8",
+            "peak 3.22 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 65,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.84 dB outside -32 to -15 dB",
+            "transient index 22.37 above 4.0",
+            "peak 3.22 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.84 dB outside -34 to -16 dB",
+            "transient index 22.37 above 3.2",
+            "peak 3.22 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -9.84 dB outside -38 to -19 dB",
+            "transient index 22.37 above 2.5",
+            "peak 3.22 dBFS should be <= -1 dBFS",
+            "duration 132.4s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 15,
+        "deepWork": 3,
+        "relax": 19,
+        "meditate": 7,
+        "sleep": 7
+      }
+    },
+    {
+      "id": "deja-vu",
+      "name": "Deja Vu",
+      "path": "apps/web/public/audio/music/shared/deja-vu.mp3",
+      "metrics": {
+        "duration_s": 124.8,
+        "rms_db": -10.3,
+        "peak_dbfs": 3.0,
+        "crest_factor": 4.62,
+        "transient_index": 19.05,
+        "clipped_samples": 28168,
+        "short_loop_similarity": 0.9988,
+        "centroid_hz": 274.1,
+        "spectral_spread_hz": 404.6,
+        "low_ratio": 0.7487,
+        "mid_ratio": 0.2461,
+        "high_ratio": 0.0051
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 55,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 274.1 Hz outside 850-1800 Hz",
+            "transient index 19.05 above 5.5",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 56,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 274.1 Hz outside 700-1500 Hz",
+            "transient index 19.05 above 4.8",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 274.1 Hz outside 450-1250 Hz",
+            "loudness -10.3 dB outside -32 to -15 dB",
+            "transient index 19.05 above 4.0",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.3 dB outside -34 to -16 dB",
+            "transient index 19.05 above 3.2",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -10.3 dB outside -38 to -19 dB",
+            "transient index 19.05 above 2.5",
+            "peak 3.0 dBFS should be <= -1 dBFS",
+            "duration 124.8s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 14,
+        "deepWork": 16,
+        "relax": 10,
+        "meditate": 3,
+        "sleep": 6
+      }
+    },
+    {
+      "id": "dreams",
+      "name": "Dreams",
+      "path": "apps/web/public/audio/music/shared/dreams.mp3",
+      "metrics": {
+        "duration_s": 306.6,
+        "rms_db": -6.78,
+        "peak_dbfs": 3.06,
+        "crest_factor": 3.1,
+        "transient_index": 4.45,
+        "clipped_samples": 231491,
+        "short_loop_similarity": 0.9993,
+        "centroid_hz": 234.3,
+        "spectral_spread_hz": 326.1,
+        "low_ratio": 0.7984,
+        "mid_ratio": 0.1932,
+        "high_ratio": 0.0084
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 234.3 Hz outside 850-1800 Hz",
+            "loudness -6.78 dB outside -26 to -12 dB",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 234.3 Hz outside 700-1500 Hz",
+            "loudness -6.78 dB outside -28 to -13 dB",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "centroid 234.3 Hz outside 450-1250 Hz",
+            "loudness -6.78 dB outside -32 to -15 dB",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 69,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -6.78 dB outside -34 to -16 dB",
+            "transient index 4.45 above 3.2",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 63,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -6.78 dB outside -38 to -19 dB",
+            "transient index 4.45 above 2.5",
+            "peak 3.06 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 19,
+        "deepWork": 19,
+        "relax": 11,
+        "meditate": 1,
+        "sleep": 5
+      }
+    },
+    {
+      "id": "ghosts",
+      "name": "Ghosts",
+      "path": "apps/web/public/audio/music/shared/ghosts.mp3",
+      "metrics": {
+        "duration_s": 90.3,
+        "rms_db": -9.68,
+        "peak_dbfs": 3.06,
+        "crest_factor": 4.33,
+        "transient_index": 6.53,
+        "clipped_samples": 22852,
+        "short_loop_similarity": 0.9984,
+        "centroid_hz": 568.2,
+        "spectral_spread_hz": 679.0,
+        "low_ratio": 0.4294,
+        "mid_ratio": 0.5477,
+        "high_ratio": 0.0209
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 76,
+          "verdict": "good",
+          "reasons": [
+            "centroid 568.2 Hz outside 850-1800 Hz",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "loudness -9.68 dB outside -28 to -13 dB",
+            "transient index 6.53 above 4.8",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "loudness -9.68 dB outside -32 to -15 dB",
+            "transient index 6.53 above 4.0",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.68 dB outside -34 to -16 dB",
+            "transient index 6.53 above 3.2",
+            "peak 3.06 dBFS should be <= -1 dBFS",
+            "duration 90.3s short for meditate"
+          ]
+        },
+        "sleep": {
+          "score": 58,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -9.68 dB outside -38 to -19 dB",
+            "transient index 6.53 above 2.5",
+            "peak 3.06 dBFS should be <= -1 dBFS",
+            "duration 90.3s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 17,
+        "deepWork": 11,
+        "relax": 6,
+        "meditate": 4,
+        "sleep": 8
+      }
+    },
+    {
+      "id": "glad-stuck-inside",
+      "name": "Glad Stuck Inside",
+      "path": "apps/web/public/audio/music/shared/glad-stuck-inside.mp3",
+      "metrics": {
+        "duration_s": 160.9,
+        "rms_db": -14.57,
+        "peak_dbfs": 2.75,
+        "crest_factor": 7.35,
+        "transient_index": 13.79,
+        "clipped_samples": 7489,
+        "short_loop_similarity": 0.9996,
+        "centroid_hz": 361.1,
+        "spectral_spread_hz": 344.4,
+        "low_ratio": 0.6333,
+        "mid_ratio": 0.362,
+        "high_ratio": 0.0047
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 60,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 361.1 Hz outside 850-1800 Hz",
+            "transient index 13.79 above 5.5",
+            "peak 2.75 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 361.1 Hz outside 700-1500 Hz",
+            "transient index 13.79 above 4.8",
+            "peak 2.75 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 13.79 above 4.0",
+            "peak 2.75 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 71,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 13.79 above 3.2",
+            "peak 2.75 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 67,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -14.57 dB outside -38 to -19 dB",
+            "transient index 13.79 above 2.5",
+            "peak 2.75 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 13,
+        "deepWork": 7,
+        "relax": 16,
+        "meditate": 11,
+        "sleep": 9
+      }
+    },
+    {
+      "id": "happy-little-off",
+      "name": "Happy Little Off",
+      "path": "apps/web/public/audio/music/shared/happy-little-off.mp3",
+      "metrics": {
+        "duration_s": 117.3,
+        "rms_db": -12.01,
+        "peak_dbfs": 2.37,
+        "crest_factor": 5.24,
+        "transient_index": 6.7,
+        "clipped_samples": 8807,
+        "short_loop_similarity": 0.9978,
+        "centroid_hz": 898.2,
+        "spectral_spread_hz": 854.9,
+        "low_ratio": 0.3307,
+        "mid_ratio": 0.6044,
+        "high_ratio": 0.0649
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 86,
+          "verdict": "ideal",
+          "reasons": [
+            "transient index 6.7 above 5.5",
+            "peak 2.37 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 82,
+          "verdict": "good",
+          "reasons": [
+            "transient index 6.7 above 4.8",
+            "peak 2.37 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "transient index 6.7 above 4.0",
+            "peak 2.37 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 68,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -12.01 dB outside -34 to -16 dB",
+            "transient index 6.7 above 3.2",
+            "peak 2.37 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 60,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -12.01 dB outside -38 to -19 dB",
+            "transient index 6.7 above 2.5",
+            "peak 2.37 dBFS should be <= -1 dBFS",
+            "duration 117.3s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 6,
+        "deepWork": 18,
+        "relax": 3,
+        "meditate": 12,
+        "sleep": 10
+      }
+    },
+    {
+      "id": "letting-go",
+      "name": "Letting Go",
+      "path": "apps/web/public/audio/music/shared/letting-go.mp3",
+      "metrics": {
+        "duration_s": 179.6,
+        "rms_db": -13.36,
+        "peak_dbfs": 2.67,
+        "crest_factor": 6.33,
+        "transient_index": 5.72,
+        "clipped_samples": 4235,
+        "short_loop_similarity": 0.9987,
+        "centroid_hz": 259.3,
+        "spectral_spread_hz": 211.0,
+        "low_ratio": 0.5216,
+        "mid_ratio": 0.4774,
+        "high_ratio": 0.0011
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 74,
+          "verdict": "good",
+          "reasons": [
+            "centroid 259.3 Hz outside 850-1800 Hz",
+            "peak 2.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "centroid 259.3 Hz outside 700-1500 Hz",
+            "peak 2.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "centroid 259.3 Hz outside 450-1250 Hz",
+            "transient index 5.72 above 4.0",
+            "peak 2.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 5.72 above 3.2",
+            "peak 2.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 67,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -13.36 dB outside -38 to -19 dB",
+            "transient index 5.72 above 2.5",
+            "peak 2.67 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 16,
+        "deepWork": 17,
+        "relax": 2,
+        "meditate": 5,
+        "sleep": 2
+      }
+    },
+    {
+      "id": "love",
+      "name": "Love",
+      "path": "apps/web/public/audio/music/shared/love.mp3",
+      "metrics": {
+        "duration_s": 187.9,
+        "rms_db": -13.53,
+        "peak_dbfs": 2.99,
+        "crest_factor": 6.7,
+        "transient_index": 16.69,
+        "clipped_samples": 15993,
+        "short_loop_similarity": 0.9939,
+        "centroid_hz": 423.9,
+        "spectral_spread_hz": 458.8,
+        "low_ratio": 0.4216,
+        "mid_ratio": 0.5761,
+        "high_ratio": 0.0023
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 423.9 Hz outside 850-1800 Hz",
+            "transient index 16.69 above 5.5",
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 423.9 Hz outside 700-1500 Hz",
+            "transient index 16.69 above 4.8",
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 16.69 above 4.0",
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 16.69 above 3.2",
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 67,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -13.53 dB outside -38 to -19 dB",
+            "transient index 16.69 above 2.5",
+            "peak 2.99 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 18,
+        "deepWork": 20,
+        "relax": 5,
+        "meditate": 2,
+        "sleep": 1
+      }
+    },
+    {
+      "id": "mixed-signals",
+      "name": "Mixed Signals",
+      "path": "apps/web/public/audio/music/shared/mixed-signals.mp3",
+      "metrics": {
+        "duration_s": 109.3,
+        "rms_db": -11.15,
+        "peak_dbfs": 3.0,
+        "crest_factor": 5.1,
+        "transient_index": 9.39,
+        "clipped_samples": 28885,
+        "short_loop_similarity": 1.0,
+        "centroid_hz": 338.7,
+        "spectral_spread_hz": 189.4,
+        "low_ratio": 0.3537,
+        "mid_ratio": 0.6462,
+        "high_ratio": 0.0001
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 63,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 338.7 Hz outside 850-1800 Hz",
+            "transient index 9.39 above 5.5",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 60,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 338.7 Hz outside 700-1500 Hz",
+            "transient index 9.39 above 4.8",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 65,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -11.15 dB outside -32 to -15 dB",
+            "transient index 9.39 above 4.0",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -11.15 dB outside -34 to -16 dB",
+            "transient index 9.39 above 3.2",
+            "peak 3.0 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -11.15 dB outside -38 to -19 dB",
+            "transient index 9.39 above 2.5",
+            "peak 3.0 dBFS should be <= -1 dBFS",
+            "duration 109.3s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 7,
+        "deepWork": 2,
+        "relax": 18,
+        "meditate": 15,
+        "sleep": 15
+      }
+    },
+    {
+      "id": "morning-coffee",
+      "name": "Morning Coffee",
+      "path": "apps/web/public/audio/music/shared/morning-coffee.mp3",
+      "metrics": {
+        "duration_s": 192.0,
+        "rms_db": -10.16,
+        "peak_dbfs": 3.06,
+        "crest_factor": 4.59,
+        "transient_index": 7.44,
+        "clipped_samples": 77635,
+        "short_loop_similarity": 0.9995,
+        "centroid_hz": 553.8,
+        "spectral_spread_hz": 770.0,
+        "low_ratio": 0.4915,
+        "mid_ratio": 0.4804,
+        "high_ratio": 0.0281
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 74,
+          "verdict": "good",
+          "reasons": [
+            "centroid 553.8 Hz outside 850-1800 Hz",
+            "transient index 7.44 above 5.5",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "transient index 7.44 above 4.8",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.16 dB outside -32 to -15 dB",
+            "transient index 7.44 above 4.0",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.16 dB outside -34 to -16 dB",
+            "transient index 7.44 above 3.2",
+            "peak 3.06 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 64,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -10.16 dB outside -38 to -19 dB",
+            "transient index 7.44 above 2.5",
+            "peak 3.06 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 1,
+        "deepWork": 13,
+        "relax": 7,
+        "meditate": 14,
+        "sleep": 14
+      }
+    },
+    {
+      "id": "mundane",
+      "name": "Mundane",
+      "path": "apps/web/public/audio/music/shared/mundane.mp3",
+      "metrics": {
+        "duration_s": 158.1,
+        "rms_db": -13.45,
+        "peak_dbfs": 2.94,
+        "crest_factor": 6.6,
+        "transient_index": 6.8,
+        "clipped_samples": 3562,
+        "short_loop_similarity": 0.9997,
+        "centroid_hz": 374.1,
+        "spectral_spread_hz": 466.0,
+        "low_ratio": 0.642,
+        "mid_ratio": 0.3406,
+        "high_ratio": 0.0173
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "centroid 374.1 Hz outside 850-1800 Hz",
+            "transient index 6.8 above 5.5",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "centroid 374.1 Hz outside 700-1500 Hz",
+            "transient index 6.8 above 4.8",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 74,
+          "verdict": "good",
+          "reasons": [
+            "transient index 6.8 above 4.0",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 6.8 above 3.2",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 66,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -13.45 dB outside -38 to -19 dB",
+            "transient index 6.8 above 2.5",
+            "peak 2.94 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 8,
+        "deepWork": 1,
+        "relax": 15,
+        "meditate": 16,
+        "sleep": 16
+      }
+    },
+    {
+      "id": "new-shoes",
+      "name": "New Shoes",
+      "path": "apps/web/public/audio/music/shared/new-shoes.mp3",
+      "metrics": {
+        "duration_s": 156.0,
+        "rms_db": -10.19,
+        "peak_dbfs": 2.99,
+        "crest_factor": 4.56,
+        "transient_index": 5.54,
+        "clipped_samples": 27470,
+        "short_loop_similarity": 1.0,
+        "centroid_hz": 679.5,
+        "spectral_spread_hz": 536.5,
+        "low_ratio": 0.0899,
+        "mid_ratio": 0.8992,
+        "high_ratio": 0.0109
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 83,
+          "verdict": "good",
+          "reasons": [
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 83,
+          "verdict": "good",
+          "reasons": [
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 78,
+          "verdict": "good",
+          "reasons": [
+            "loudness -10.19 dB outside -32 to -15 dB",
+            "transient index 5.54 above 4.0",
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 71,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.19 dB outside -34 to -16 dB",
+            "transient index 5.54 above 3.2",
+            "peak 2.99 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 62,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -10.19 dB outside -38 to -19 dB",
+            "transient index 5.54 above 2.5",
+            "peak 2.99 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 3,
+        "deepWork": 12,
+        "relax": 12,
+        "meditate": 20,
+        "sleep": 20
+      }
+    },
+    {
+      "id": "puppy-love",
+      "name": "Puppy Love",
+      "path": "apps/web/public/audio/music/shared/puppy-love.mp3",
+      "metrics": {
+        "duration_s": 150.0,
+        "rms_db": -9.44,
+        "peak_dbfs": 3.38,
+        "crest_factor": 4.38,
+        "transient_index": 14.5,
+        "clipped_samples": 48731,
+        "short_loop_similarity": 0.9999,
+        "centroid_hz": 691.1,
+        "spectral_spread_hz": 665.7,
+        "low_ratio": 0.3182,
+        "mid_ratio": 0.6712,
+        "high_ratio": 0.0106
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 65,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 14.5 above 5.5",
+            "peak 3.38 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 68,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.44 dB outside -28 to -13 dB",
+            "transient index 14.5 above 4.8",
+            "peak 3.38 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.44 dB outside -32 to -15 dB",
+            "transient index 14.5 above 4.0",
+            "peak 3.38 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.44 dB outside -34 to -16 dB",
+            "transient index 14.5 above 3.2",
+            "peak 3.38 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -9.44 dB outside -38 to -19 dB",
+            "transient index 14.5 above 2.5",
+            "peak 3.38 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 12,
+        "deepWork": 21,
+        "relax": 4,
+        "meditate": 9,
+        "sleep": 11
+      }
+    },
+    {
+      "id": "ramen",
+      "name": "Ramen",
+      "path": "apps/web/public/audio/music/shared/ramen.mp3",
+      "metrics": {
+        "duration_s": 112.9,
+        "rms_db": -7.56,
+        "peak_dbfs": 3.08,
+        "crest_factor": 3.4,
+        "transient_index": 5.95,
+        "clipped_samples": 48036,
+        "short_loop_similarity": 0.9995,
+        "centroid_hz": 257.6,
+        "spectral_spread_hz": 419.6,
+        "low_ratio": 0.8283,
+        "mid_ratio": 0.1617,
+        "high_ratio": 0.01
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 257.6 Hz outside 850-1800 Hz",
+            "loudness -7.56 dB outside -26 to -12 dB",
+            "peak 3.08 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 65,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 257.6 Hz outside 700-1500 Hz",
+            "loudness -7.56 dB outside -28 to -13 dB",
+            "transient index 5.95 above 4.8",
+            "peak 3.08 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 257.6 Hz outside 450-1250 Hz",
+            "loudness -7.56 dB outside -32 to -15 dB",
+            "transient index 5.95 above 4.0",
+            "peak 3.08 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -7.56 dB outside -34 to -16 dB",
+            "transient index 5.95 above 3.2",
+            "peak 3.08 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 57,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -7.56 dB outside -38 to -19 dB",
+            "transient index 5.95 above 2.5",
+            "peak 3.08 dBFS should be <= -1 dBFS",
+            "duration 112.9s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 4,
+        "deepWork": 5,
+        "relax": 14,
+        "meditate": 18,
+        "sleep": 18
+      }
+    },
+    {
+      "id": "seasons-change",
+      "name": "Seasons Change",
+      "path": "apps/web/public/audio/music/shared/seasons-change.mp3",
+      "metrics": {
+        "duration_s": 135.5,
+        "rms_db": -10.3,
+        "peak_dbfs": 3.23,
+        "crest_factor": 4.75,
+        "transient_index": 9.94,
+        "clipped_samples": 29261,
+        "short_loop_similarity": 0.9977,
+        "centroid_hz": 476.1,
+        "spectral_spread_hz": 601.6,
+        "low_ratio": 0.3138,
+        "mid_ratio": 0.6713,
+        "high_ratio": 0.0149
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 476.1 Hz outside 850-1800 Hz",
+            "transient index 9.94 above 5.5",
+            "peak 3.23 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 476.1 Hz outside 700-1500 Hz",
+            "transient index 9.94 above 4.8",
+            "peak 3.23 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.3 dB outside -32 to -15 dB",
+            "transient index 9.94 above 4.0",
+            "peak 3.23 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.3 dB outside -34 to -16 dB",
+            "transient index 9.94 above 3.2",
+            "peak 3.23 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -10.3 dB outside -38 to -19 dB",
+            "transient index 9.94 above 2.5",
+            "peak 3.23 dBFS should be <= -1 dBFS",
+            "duration 135.5s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 9,
+        "deepWork": 15,
+        "relax": 1,
+        "meditate": 6,
+        "sleep": 3
+      }
+    },
+    {
+      "id": "shut-up-or-shut-in",
+      "name": "Shut Up or Shut In",
+      "path": "apps/web/public/audio/music/shared/shut-up-or-shut-in.mp3",
+      "metrics": {
+        "duration_s": 120.0,
+        "rms_db": -12.34,
+        "peak_dbfs": 2.94,
+        "crest_factor": 5.81,
+        "transient_index": 16.15,
+        "clipped_samples": 7069,
+        "short_loop_similarity": 0.9995,
+        "centroid_hz": 723.4,
+        "spectral_spread_hz": 626.8,
+        "low_ratio": 0.523,
+        "mid_ratio": 0.4017,
+        "high_ratio": 0.0753
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 16.15 above 5.5",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "transient index 16.15 above 4.8",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 16.15 above 4.0",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 69,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -12.34 dB outside -34 to -16 dB",
+            "transient index 16.15 above 3.2",
+            "peak 2.94 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 63,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -12.34 dB outside -38 to -19 dB",
+            "transient index 16.15 above 2.5",
+            "peak 2.94 dBFS should be <= -1 dBFS",
+            "duration 120.0s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 21,
+        "deepWork": 4,
+        "relax": 21,
+        "meditate": 21,
+        "sleep": 21
+      }
+    },
+    {
+      "id": "small-towns",
+      "name": "Small Towns",
+      "path": "apps/web/public/audio/music/shared/small-towns.mp3",
+      "metrics": {
+        "duration_s": 146.0,
+        "rms_db": -9.65,
+        "peak_dbfs": 2.79,
+        "crest_factor": 4.19,
+        "transient_index": 13.55,
+        "clipped_samples": 80594,
+        "short_loop_similarity": 0.9993,
+        "centroid_hz": 473.5,
+        "spectral_spread_hz": 433.9,
+        "low_ratio": 0.3012,
+        "mid_ratio": 0.6892,
+        "high_ratio": 0.0096
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 60,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 473.5 Hz outside 850-1800 Hz",
+            "transient index 13.55 above 5.5",
+            "peak 2.79 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 61,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 473.5 Hz outside 700-1500 Hz",
+            "loudness -9.65 dB outside -28 to -13 dB",
+            "transient index 13.55 above 4.8",
+            "peak 2.79 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 67,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.65 dB outside -32 to -15 dB",
+            "transient index 13.55 above 4.0",
+            "peak 2.79 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -9.65 dB outside -34 to -16 dB",
+            "transient index 13.55 above 3.2",
+            "peak 2.79 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -9.65 dB outside -38 to -19 dB",
+            "transient index 13.55 above 2.5",
+            "peak 2.79 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 5,
+        "deepWork": 10,
+        "relax": 8,
+        "meditate": 13,
+        "sleep": 13
+      }
+    },
+    {
+      "id": "something-in-the-air",
+      "name": "Something in the Air",
+      "path": "apps/web/public/audio/music/shared/something-in-the-air.mp3",
+      "metrics": {
+        "duration_s": 132.0,
+        "rms_db": -11.76,
+        "peak_dbfs": 3.02,
+        "crest_factor": 5.48,
+        "transient_index": 20.98,
+        "clipped_samples": 16407,
+        "short_loop_similarity": 1.0,
+        "centroid_hz": 188.4,
+        "spectral_spread_hz": 227.1,
+        "low_ratio": 0.8716,
+        "mid_ratio": 0.1252,
+        "high_ratio": 0.0032
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 55,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 188.4 Hz outside 850-1800 Hz",
+            "transient index 20.98 above 5.5",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 55,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 188.4 Hz outside 700-1500 Hz",
+            "transient index 20.98 above 4.8",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 61,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 188.4 Hz outside 450-1250 Hz",
+            "transient index 20.98 above 4.0",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 63,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 188.4 Hz outside 350-1050 Hz",
+            "loudness -11.76 dB outside -34 to -16 dB",
+            "transient index 20.98 above 3.2",
+            "peak 3.02 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 60,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -11.76 dB outside -38 to -19 dB",
+            "transient index 20.98 above 2.5",
+            "peak 3.02 dBFS should be <= -1 dBFS",
+            "duration 132.0s short for sleep",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 2,
+        "deepWork": 6,
+        "relax": 13,
+        "meditate": 17,
+        "sleep": 17
+      }
+    },
+    {
+      "id": "yesterday",
+      "name": "Yesterday",
+      "path": "apps/web/public/audio/music/shared/yesterday.mp3",
+      "metrics": {
+        "duration_s": 150.8,
+        "rms_db": -10.48,
+        "peak_dbfs": 3.67,
+        "crest_factor": 5.1,
+        "transient_index": 11.49,
+        "clipped_samples": 18776,
+        "short_loop_similarity": 0.998,
+        "centroid_hz": 266.6,
+        "spectral_spread_hz": 468.9,
+        "low_ratio": 0.7782,
+        "mid_ratio": 0.2093,
+        "high_ratio": 0.0126
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 55,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 266.6 Hz outside 850-1800 Hz",
+            "transient index 11.49 above 5.5",
+            "peak 3.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 56,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 266.6 Hz outside 700-1500 Hz",
+            "transient index 11.49 above 4.8",
+            "peak 3.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 266.6 Hz outside 450-1250 Hz",
+            "loudness -10.48 dB outside -32 to -15 dB",
+            "transient index 11.49 above 4.0",
+            "peak 3.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -10.48 dB outside -34 to -16 dB",
+            "transient index 11.49 above 3.2",
+            "peak 3.67 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "sleep": {
+          "score": 62,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -10.48 dB outside -38 to -19 dB",
+            "transient index 11.49 above 2.5",
+            "peak 3.67 dBFS should be <= -1 dBFS",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      },
+      "playlist_position": {
+        "focus": 10,
+        "deepWork": 14,
+        "relax": 9,
+        "meditate": 10,
+        "sleep": 4
+      }
+    }
+  ],
+  "soundscapes": [
+    {
+      "id": "cafe-ambience",
+      "name": "Coffee Shop Ambience",
+      "category": "cafe",
+      "path": "apps/web/public/audio/soundscapes/cafe/coffee-shop-ambience.mp3",
+      "metrics": {
+        "duration_s": 296.0,
+        "rms_db": -41.56,
+        "peak_dbfs": -23.04,
+        "crest_factor": 8.43,
+        "transient_index": 3.44,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9924,
+        "centroid_hz": 431.8,
+        "spectral_spread_hz": 484.4,
+        "low_ratio": 0.4176,
+        "mid_ratio": 0.5774,
+        "high_ratio": 0.005
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 57,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 431.8 Hz outside 850-1800 Hz",
+            "loudness -41.56 dB outside -26 to -12 dB",
+            "cafe is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 431.8 Hz outside 700-1500 Hz",
+            "loudness -41.56 dB outside -28 to -13 dB",
+            "cafe is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 76,
+          "verdict": "good",
+          "reasons": [
+            "loudness -41.56 dB outside -32 to -15 dB",
+            "cafe is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 78,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -41.56 dB outside -34 to -16 dB",
+            "cafe is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 78,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 3.44 above 2.5",
+            "cafe is not an automatic sleep category",
+            "sleep hard gate: category is opt-in only"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cafe-coffeehouse",
+      "name": "Coffeehouse",
+      "category": "cafe",
+      "path": "apps/web/public/audio/soundscapes/cafe/coffeehouse-ambience.mp3",
+      "metrics": {
+        "duration_s": 120.4,
+        "rms_db": -21.16,
+        "peak_dbfs": -3.53,
+        "crest_factor": 7.62,
+        "transient_index": 4.22,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9975,
+        "centroid_hz": 648.0,
+        "spectral_spread_hz": 750.8,
+        "low_ratio": 0.2834,
+        "mid_ratio": 0.7069,
+        "high_ratio": 0.0097
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 83,
+          "verdict": "good",
+          "reasons": [
+            "centroid 648.0 Hz outside 850-1800 Hz",
+            "cafe is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 86,
+          "verdict": "ideal",
+          "reasons": [
+            "cafe is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "cafe is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 83,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 4.22 above 3.2",
+            "cafe is not an automatic meditate category",
+            "short-loop risk 0.9975 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 76,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 4.22 above 2.5",
+            "cafe is not an automatic sleep category",
+            "short-loop risk 0.9975 similarity",
+            "sleep hard gate: category is opt-in only",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cafe-northtown",
+      "name": "Coffee Shop",
+      "category": "cafe",
+      "path": "apps/web/public/audio/soundscapes/cafe/coffee-shop-northtown.mp3",
+      "metrics": {
+        "duration_s": 144.7,
+        "rms_db": -25.76,
+        "peak_dbfs": 1.74,
+        "crest_factor": 23.72,
+        "transient_index": 4.74,
+        "clipped_samples": 564,
+        "short_loop_similarity": 0.995,
+        "centroid_hz": 301.9,
+        "spectral_spread_hz": 549.4,
+        "low_ratio": 0.6444,
+        "mid_ratio": 0.3506,
+        "high_ratio": 0.005
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 301.9 Hz outside 850-1800 Hz",
+            "peak 1.74 dBFS should be <= -1 dBFS",
+            "cafe is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 66,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 301.9 Hz outside 700-1500 Hz",
+            "peak 1.74 dBFS should be <= -1 dBFS",
+            "cafe is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "peak 1.74 dBFS should be <= -1 dBFS",
+            "cafe is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 68,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 4.74 above 3.2",
+            "peak 1.74 dBFS should be <= -1 dBFS",
+            "cafe is not an automatic meditate category",
+            "short-loop risk 0.995 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 63,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 4.74 above 2.5",
+            "peak 1.74 dBFS should be <= -1 dBFS",
+            "cafe is not an automatic sleep category",
+            "short-loop risk 0.995 similarity",
+            "sleep hard gate: category is opt-in only"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cafe-six-people",
+      "name": "Small Cafe",
+      "category": "cafe",
+      "path": "apps/web/public/audio/soundscapes/cafe/coffee-shop-6people.mp3",
+      "metrics": {
+        "duration_s": 140.8,
+        "rms_db": -44.82,
+        "peak_dbfs": -16.04,
+        "crest_factor": 27.48,
+        "transient_index": 3.76,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9933,
+        "centroid_hz": 425.5,
+        "spectral_spread_hz": 722.0,
+        "low_ratio": 0.6179,
+        "mid_ratio": 0.3711,
+        "high_ratio": 0.011
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 57,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 425.5 Hz outside 850-1800 Hz",
+            "loudness -44.82 dB outside -26 to -12 dB",
+            "cafe is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 59,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 425.5 Hz outside 700-1500 Hz",
+            "loudness -44.82 dB outside -28 to -13 dB",
+            "cafe is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "loudness -44.82 dB outside -32 to -15 dB",
+            "cafe is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 73,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -44.82 dB outside -34 to -16 dB",
+            "cafe is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 72,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -44.82 dB outside -38 to -19 dB",
+            "transient index 3.76 above 2.5",
+            "cafe is not an automatic sleep category",
+            "sleep hard gate: category is opt-in only",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fire-crackling",
+      "name": "Crackling Fire",
+      "category": "fire",
+      "path": "apps/web/public/audio/soundscapes/fire/crackling-fire.mp3",
+      "metrics": {
+        "duration_s": 60.0,
+        "rms_db": -33.23,
+        "peak_dbfs": 3.46,
+        "crest_factor": 68.3,
+        "transient_index": 13.3,
+        "clipped_samples": 25,
+        "short_loop_similarity": 0.9939,
+        "centroid_hz": 4770.7,
+        "spectral_spread_hz": 3179.7,
+        "low_ratio": 0.1425,
+        "mid_ratio": 0.3367,
+        "high_ratio": 0.5208
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 18,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4770.7 Hz outside 850-1800 Hz",
+            "loudness -33.23 dB outside -26 to -12 dB",
+            "high-frequency energy 52.1% above 36.0%",
+            "transient index 13.3 above 5.5",
+            "peak 3.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 12,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4770.7 Hz outside 700-1500 Hz",
+            "loudness -33.23 dB outside -28 to -13 dB",
+            "high-frequency energy 52.1% above 30.0%",
+            "transient index 13.3 above 4.8",
+            "peak 3.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 25,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4770.7 Hz outside 450-1250 Hz",
+            "high-frequency energy 52.1% above 24.0%",
+            "transient index 13.3 above 4.0",
+            "peak 3.46 dBFS should be <= -1 dBFS",
+            "duration 60.0s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 13,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4770.7 Hz outside 350-1050 Hz",
+            "high-frequency energy 52.1% above 18.0%",
+            "transient index 13.3 above 3.2",
+            "peak 3.46 dBFS should be <= -1 dBFS",
+            "duration 60.0s short for meditate"
+          ]
+        },
+        "sleep": {
+          "score": 13,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4770.7 Hz outside 250-850 Hz",
+            "high-frequency energy 52.1% above 12.0%",
+            "transient index 13.3 above 2.5",
+            "peak 3.46 dBFS should be <= -1 dBFS",
+            "duration 60.0s short for sleep"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fire-fireplace",
+      "name": "Inside Fireplace",
+      "category": "fire",
+      "path": "apps/web/public/audio/soundscapes/fire/inside-fireplace.mp3",
+      "metrics": {
+        "duration_s": 169.6,
+        "rms_db": -41.37,
+        "peak_dbfs": 0.01,
+        "crest_factor": 117.12,
+        "transient_index": 10.21,
+        "clipped_samples": 1,
+        "short_loop_similarity": 0.9935,
+        "centroid_hz": 1792.3,
+        "spectral_spread_hz": 2559.1,
+        "low_ratio": 0.6124,
+        "mid_ratio": 0.1954,
+        "high_ratio": 0.1922
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 43,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -41.37 dB outside -26 to -12 dB",
+            "transient index 10.21 above 5.5",
+            "peak 0.01 dBFS should be <= -1 dBFS",
+            "fire is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 34,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1792.3 Hz outside 700-1500 Hz",
+            "loudness -41.37 dB outside -28 to -13 dB",
+            "transient index 10.21 above 4.8",
+            "peak 0.01 dBFS should be <= -1 dBFS",
+            "fire is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 45,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1792.3 Hz outside 450-1250 Hz",
+            "loudness -41.37 dB outside -32 to -15 dB",
+            "transient index 10.21 above 4.0",
+            "peak 0.01 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 27,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1792.3 Hz outside 350-1050 Hz",
+            "loudness -41.37 dB outside -34 to -16 dB",
+            "transient index 10.21 above 3.2",
+            "peak 0.01 dBFS should be <= -1 dBFS",
+            "fire is not an automatic meditate category"
+          ]
+        },
+        "sleep": {
+          "score": 22,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1792.3 Hz outside 250-850 Hz",
+            "high-frequency energy 19.2% above 12.0%",
+            "transient index 10.21 above 2.5",
+            "peak 0.01 dBFS should be <= -1 dBFS",
+            "fire is not an automatic sleep category"
+          ]
+        }
+      }
+    },
+    {
+      "id": "forest-birds-branches",
+      "name": "Forest Birds",
+      "category": "forest",
+      "path": "apps/web/public/audio/soundscapes/forest/forest-birds-branches.mp3",
+      "metrics": {
+        "duration_s": 307.0,
+        "rms_db": -52.33,
+        "peak_dbfs": -10.86,
+        "crest_factor": 118.48,
+        "transient_index": 11.61,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9911,
+        "centroid_hz": 4202.3,
+        "spectral_spread_hz": 1984.1,
+        "low_ratio": 0.0005,
+        "mid_ratio": 0.6257,
+        "high_ratio": 0.3738
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 37,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4202.3 Hz outside 850-1800 Hz",
+            "loudness -52.33 dB outside -26 to -12 dB",
+            "transient index 11.61 above 5.5"
+          ]
+        },
+        "deepWork": {
+          "score": 34,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4202.3 Hz outside 700-1500 Hz",
+            "loudness -52.33 dB outside -28 to -13 dB",
+            "high-frequency energy 37.4% above 30.0%",
+            "transient index 11.61 above 4.8"
+          ]
+        },
+        "relax": {
+          "score": 28,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4202.3 Hz outside 450-1250 Hz",
+            "loudness -52.33 dB outside -32 to -15 dB",
+            "high-frequency energy 37.4% above 24.0%",
+            "transient index 11.61 above 4.0"
+          ]
+        },
+        "meditate": {
+          "score": 8,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4202.3 Hz outside 350-1050 Hz",
+            "loudness -52.33 dB outside -34 to -16 dB",
+            "high-frequency energy 37.4% above 18.0%",
+            "transient index 11.61 above 3.2",
+            "forest is not an automatic meditate category"
+          ]
+        },
+        "sleep": {
+          "score": 13,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 4202.3 Hz outside 250-850 Hz",
+            "loudness -52.33 dB outside -38 to -19 dB",
+            "high-frequency energy 37.4% above 12.0%",
+            "transient index 11.61 above 2.5",
+            "forest is not an automatic sleep category"
+          ]
+        }
+      }
+    },
+    {
+      "id": "forest-cicadas",
+      "name": "Forest Night Cicadas",
+      "category": "forest",
+      "path": "apps/web/public/audio/soundscapes/forest/forest-night-cicadas.mp3",
+      "metrics": {
+        "duration_s": 300.6,
+        "rms_db": -41.12,
+        "peak_dbfs": -24.25,
+        "crest_factor": 6.97,
+        "transient_index": 3.07,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9893,
+        "centroid_hz": 5525.8,
+        "spectral_spread_hz": 1720.3,
+        "low_ratio": 0.0008,
+        "mid_ratio": 0.032,
+        "high_ratio": 0.9672
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 37,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5525.8 Hz outside 850-1800 Hz",
+            "loudness -41.12 dB outside -26 to -12 dB",
+            "high-frequency energy 96.7% above 36.0%"
+          ]
+        },
+        "deepWork": {
+          "score": 40,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5525.8 Hz outside 700-1500 Hz",
+            "loudness -41.12 dB outside -28 to -13 dB",
+            "high-frequency energy 96.7% above 30.0%"
+          ]
+        },
+        "relax": {
+          "score": 46,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5525.8 Hz outside 450-1250 Hz",
+            "loudness -41.12 dB outside -32 to -15 dB",
+            "high-frequency energy 96.7% above 24.0%"
+          ]
+        },
+        "meditate": {
+          "score": 37,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5525.8 Hz outside 350-1050 Hz",
+            "loudness -41.12 dB outside -34 to -16 dB",
+            "high-frequency energy 96.7% above 18.0%",
+            "forest is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 38,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5525.8 Hz outside 250-850 Hz",
+            "high-frequency energy 96.7% above 12.0%",
+            "transient index 3.07 above 2.5",
+            "forest is not an automatic sleep category",
+            "sleep hard gate: category is opt-in only"
+          ]
+        }
+      }
+    },
+    {
+      "id": "forest-night-ambience",
+      "name": "Forest Night",
+      "category": "forest",
+      "path": "apps/web/public/audio/soundscapes/forest/forest-night-ambience.mp3",
+      "metrics": {
+        "duration_s": 140.9,
+        "rms_db": -27.0,
+        "peak_dbfs": -10.16,
+        "crest_factor": 6.95,
+        "transient_index": 6.92,
+        "clipped_samples": 0,
+        "short_loop_similarity": 1.0,
+        "centroid_hz": 36.5,
+        "spectral_spread_hz": 90.9,
+        "low_ratio": 0.964,
+        "mid_ratio": 0.0307,
+        "high_ratio": 0.0001
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "centroid 36.5 Hz outside 850-1800 Hz",
+            "transient index 6.92 above 5.5"
+          ]
+        },
+        "deepWork": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "centroid 36.5 Hz outside 700-1500 Hz",
+            "transient index 6.92 above 4.8"
+          ]
+        },
+        "relax": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "centroid 36.5 Hz outside 450-1250 Hz",
+            "transient index 6.92 above 4.0"
+          ]
+        },
+        "meditate": {
+          "score": 60,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 36.5 Hz outside 350-1050 Hz",
+            "transient index 6.92 above 3.2",
+            "forest is not an automatic meditate category",
+            "short-loop risk 1.0 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 62,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 36.5 Hz outside 250-850 Hz",
+            "transient index 6.92 above 2.5",
+            "forest is not an automatic sleep category",
+            "short-loop risk 1.0 similarity",
+            "sleep hard gate: category is opt-in only"
+          ]
+        }
+      }
+    },
+    {
+      "id": "forest-night-crickets",
+      "name": "Night Crickets",
+      "category": "forest",
+      "path": "apps/web/public/audio/soundscapes/forest/night-crickets.mp3",
+      "metrics": {
+        "duration_s": 60.4,
+        "rms_db": -43.4,
+        "peak_dbfs": -28.58,
+        "crest_factor": 5.51,
+        "transient_index": 3.46,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.993,
+        "centroid_hz": 5770.1,
+        "spectral_spread_hz": 1363.6,
+        "low_ratio": 0.0,
+        "mid_ratio": 0.1467,
+        "high_ratio": 0.8533
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 37,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5770.1 Hz outside 850-1800 Hz",
+            "loudness -43.4 dB outside -26 to -12 dB",
+            "high-frequency energy 85.3% above 36.0%"
+          ]
+        },
+        "deepWork": {
+          "score": 34,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5770.1 Hz outside 700-1500 Hz",
+            "loudness -43.4 dB outside -28 to -13 dB",
+            "high-frequency energy 85.3% above 30.0%",
+            "duration 60.4s short for deepWork"
+          ]
+        },
+        "relax": {
+          "score": 40,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5770.1 Hz outside 450-1250 Hz",
+            "loudness -43.4 dB outside -32 to -15 dB",
+            "high-frequency energy 85.3% above 24.0%",
+            "duration 60.4s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 28,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5770.1 Hz outside 350-1050 Hz",
+            "loudness -43.4 dB outside -34 to -16 dB",
+            "high-frequency energy 85.3% above 18.0%",
+            "duration 60.4s short for meditate",
+            "forest is not an automatic meditate category"
+          ]
+        },
+        "sleep": {
+          "score": 28,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 5770.1 Hz outside 250-850 Hz",
+            "loudness -43.4 dB outside -38 to -19 dB",
+            "high-frequency energy 85.3% above 12.0%",
+            "transient index 3.46 above 2.5",
+            "duration 60.4s short for sleep"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ocean-chill-coast",
+      "name": "Chill Coast Birds",
+      "category": "ocean",
+      "path": "apps/web/public/audio/soundscapes/ocean/chill-coast-birds.mp3",
+      "metrics": {
+        "duration_s": 139.1,
+        "rms_db": -14.19,
+        "peak_dbfs": 2.27,
+        "crest_factor": 6.65,
+        "transient_index": 3.53,
+        "clipped_samples": 74,
+        "short_loop_similarity": 0.9981,
+        "centroid_hz": 740.0,
+        "spectral_spread_hz": 1288.4,
+        "low_ratio": 0.4396,
+        "mid_ratio": 0.5224,
+        "high_ratio": 0.038
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "peak 2.27 dBFS should be <= -1 dBFS",
+            "ocean is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 78,
+          "verdict": "good",
+          "reasons": [
+            "peak 2.27 dBFS should be <= -1 dBFS",
+            "ocean is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 89,
+          "verdict": "ideal",
+          "reasons": [
+            "peak 2.27 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 74,
+          "verdict": "wrong",
+          "reasons": [
+            "peak 2.27 dBFS should be <= -1 dBFS",
+            "ocean is not an automatic meditate category",
+            "short-loop risk 0.9981 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 78,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -14.19 dB outside -38 to -19 dB",
+            "transient index 3.53 above 2.5",
+            "peak 2.27 dBFS should be <= -1 dBFS",
+            "short-loop risk 0.9981 similarity",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ocean-gentle-beach",
+      "name": "Gentle Beach Waves",
+      "category": "ocean",
+      "path": "apps/web/public/audio/soundscapes/ocean/gentle-waves-beach.mp3",
+      "metrics": {
+        "duration_s": 100.7,
+        "rms_db": -41.49,
+        "peak_dbfs": -19.04,
+        "crest_factor": 13.26,
+        "transient_index": 6.6,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9942,
+        "centroid_hz": 693.0,
+        "spectral_spread_hz": 1184.3,
+        "low_ratio": 0.6376,
+        "mid_ratio": 0.3226,
+        "high_ratio": 0.0397
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 60,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -41.49 dB outside -26 to -12 dB",
+            "ocean is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 63,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -41.49 dB outside -28 to -13 dB",
+            "transient index 6.6 above 4.8",
+            "ocean is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 78,
+          "verdict": "good",
+          "reasons": [
+            "loudness -41.49 dB outside -32 to -15 dB",
+            "transient index 6.6 above 4.0"
+          ]
+        },
+        "meditate": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -41.49 dB outside -34 to -16 dB",
+            "transient index 6.6 above 3.2",
+            "ocean is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 78,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 6.6 above 2.5",
+            "sleep hard gate: short file can expose audible loop seams",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ocean-waves",
+      "name": "Ocean Waves",
+      "category": "ocean",
+      "path": "apps/web/public/audio/soundscapes/ocean/ocean-waves.mp3",
+      "metrics": {
+        "duration_s": 70.9,
+        "rms_db": -38.77,
+        "peak_dbfs": -18.64,
+        "crest_factor": 10.16,
+        "transient_index": 10.87,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9933,
+        "centroid_hz": 573.0,
+        "spectral_spread_hz": 944.5,
+        "low_ratio": 0.4848,
+        "mid_ratio": 0.4952,
+        "high_ratio": 0.02
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 46,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 573.0 Hz outside 850-1800 Hz",
+            "loudness -38.77 dB outside -26 to -12 dB",
+            "transient index 10.87 above 5.5",
+            "ocean is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 51,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -38.77 dB outside -28 to -13 dB",
+            "transient index 10.87 above 4.8",
+            "duration 70.9s short for deepWork",
+            "ocean is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "loudness -38.77 dB outside -32 to -15 dB",
+            "transient index 10.87 above 4.0",
+            "duration 70.9s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 62,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -38.77 dB outside -34 to -16 dB",
+            "transient index 10.87 above 3.2",
+            "duration 70.9s short for meditate",
+            "ocean is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 78,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 10.87 above 2.5",
+            "duration 70.9s short for sleep",
+            "sleep hard gate: short file can expose audible loop seams",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ocean-zen-waves",
+      "name": "Zen Ocean Waves",
+      "category": "ocean",
+      "path": "apps/web/public/audio/soundscapes/ocean/zen-ocean-waves.mp3",
+      "metrics": {
+        "duration_s": 95.8,
+        "rms_db": -21.61,
+        "peak_dbfs": -4.93,
+        "crest_factor": 6.83,
+        "transient_index": 3.05,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9991,
+        "centroid_hz": 1525.7,
+        "spectral_spread_hz": 1593.8,
+        "low_ratio": 0.029,
+        "mid_ratio": 0.8999,
+        "high_ratio": 0.0672
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 88,
+          "verdict": "ideal",
+          "reasons": [
+            "ocean is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "ocean is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 91,
+          "verdict": "ideal",
+          "reasons": [
+            "centroid 1525.7 Hz outside 450-1250 Hz"
+          ]
+        },
+        "meditate": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1525.7 Hz outside 350-1050 Hz",
+            "duration 95.8s short for meditate",
+            "ocean is not an automatic meditate category",
+            "short-loop risk 0.9991 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1525.7 Hz outside 250-850 Hz",
+            "transient index 3.05 above 2.5",
+            "duration 95.8s short for sleep",
+            "short-loop risk 0.9991 similarity",
+            "sleep hard gate: short file can expose audible loop seams"
+          ]
+        }
+      }
+    },
+    {
+      "id": "rain-noise",
+      "name": "Steady Rain",
+      "category": "rain",
+      "path": "apps/web/public/audio/soundscapes/rain/rain-noise.mp3",
+      "metrics": {
+        "duration_s": 98.2,
+        "rms_db": -30.39,
+        "peak_dbfs": -0.46,
+        "crest_factor": 31.34,
+        "transient_index": 4.39,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9961,
+        "centroid_hz": 1396.7,
+        "spectral_spread_hz": 2030.7,
+        "low_ratio": 0.4653,
+        "mid_ratio": 0.4173,
+        "high_ratio": 0.1175
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 84,
+          "verdict": "good",
+          "reasons": [
+            "loudness -30.39 dB outside -26 to -12 dB",
+            "peak -0.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "peak -0.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 84,
+          "verdict": "good",
+          "reasons": [
+            "peak -0.46 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 49,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1396.7 Hz outside 350-1050 Hz",
+            "transient index 4.39 above 3.2",
+            "peak -0.46 dBFS should be <= -1 dBFS",
+            "rain is not an automatic meditate category",
+            "short-loop risk 0.9961 similarity"
+          ]
+        },
+        "sleep": {
+          "score": 45,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 1396.7 Hz outside 250-850 Hz",
+            "transient index 4.39 above 2.5",
+            "peak -0.46 dBFS should be <= -1 dBFS",
+            "short-loop risk 0.9961 similarity",
+            "sleep hard gate: short file can expose audible loop seams"
+          ]
+        }
+      }
+    },
+    {
+      "id": "rain-spectacular",
+      "name": "Wide Rain",
+      "category": "rain",
+      "path": "apps/web/public/audio/soundscapes/rain/rain-spectacular.mp3",
+      "metrics": {
+        "duration_s": 222.8,
+        "rms_db": -36.08,
+        "peak_dbfs": -8.12,
+        "crest_factor": 25.01,
+        "transient_index": 5.76,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9945,
+        "centroid_hz": 351.4,
+        "spectral_spread_hz": 844.4,
+        "low_ratio": 0.8457,
+        "mid_ratio": 0.1368,
+        "high_ratio": 0.0175
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "centroid 351.4 Hz outside 850-1800 Hz",
+            "loudness -36.08 dB outside -26 to -12 dB"
+          ]
+        },
+        "deepWork": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "centroid 351.4 Hz outside 700-1500 Hz",
+            "loudness -36.08 dB outside -28 to -13 dB"
+          ]
+        },
+        "relax": {
+          "score": 85,
+          "verdict": "ideal",
+          "reasons": [
+            "loudness -36.08 dB outside -32 to -15 dB",
+            "transient index 5.76 above 4.0"
+          ]
+        },
+        "meditate": {
+          "score": 72,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 5.76 above 3.2",
+            "rain is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 83,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 5.76 above 2.5",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "rain-thunderstorm",
+      "name": "Thunderstorm Rain",
+      "category": "rain",
+      "path": "apps/web/public/audio/soundscapes/rain/thunderstorm-rain-loop.mp3",
+      "metrics": {
+        "duration_s": 127.7,
+        "rms_db": -24.06,
+        "peak_dbfs": 2.91,
+        "crest_factor": 22.29,
+        "transient_index": 15.67,
+        "clipped_samples": 2229,
+        "short_loop_similarity": 0.9957,
+        "centroid_hz": 720.4,
+        "spectral_spread_hz": 1226.1,
+        "low_ratio": 0.5715,
+        "mid_ratio": 0.3892,
+        "high_ratio": 0.0394
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 15.67 above 5.5",
+            "peak 2.91 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "deepWork": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "transient index 15.67 above 4.8",
+            "peak 2.91 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "relax": {
+          "score": 73,
+          "verdict": "good",
+          "reasons": [
+            "transient index 15.67 above 4.0",
+            "peak 2.91 dBFS should be <= -1 dBFS"
+          ]
+        },
+        "meditate": {
+          "score": 61,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 15.67 above 3.2",
+            "peak 2.91 dBFS should be <= -1 dBFS",
+            "rain is not an automatic meditate category",
+            "short-loop risk 0.9957 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 73,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 15.67 above 2.5",
+            "peak 2.91 dBFS should be <= -1 dBFS",
+            "short-loop risk 0.9957 similarity",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "space-ambience",
+      "name": "Space Ambience",
+      "category": "space",
+      "path": "apps/web/public/audio/soundscapes/space/space-ambience.mp3",
+      "metrics": {
+        "duration_s": 151.4,
+        "rms_db": -26.24,
+        "peak_dbfs": -10.05,
+        "crest_factor": 6.44,
+        "transient_index": 4.32,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9922,
+        "centroid_hz": 165.5,
+        "spectral_spread_hz": 155.4,
+        "low_ratio": 0.7922,
+        "mid_ratio": 0.2078,
+        "high_ratio": 0.0
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 165.5 Hz outside 850-1800 Hz",
+            "space is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 71,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 165.5 Hz outside 700-1500 Hz",
+            "space is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 78,
+          "verdict": "good",
+          "reasons": [
+            "centroid 165.5 Hz outside 450-1250 Hz",
+            "space is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "centroid 165.5 Hz outside 350-1050 Hz",
+            "transient index 4.32 above 3.2"
+          ]
+        },
+        "sleep": {
+          "score": 72,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 4.32 above 2.5",
+            "space is not an automatic sleep category",
+            "sleep hard gate: category is opt-in only",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "space-cosmic-loop",
+      "name": "Cosmic Ambient",
+      "category": "space",
+      "path": "apps/web/public/audio/soundscapes/space/cosmic-ambient-loop.mp3",
+      "metrics": {
+        "duration_s": 96.0,
+        "rms_db": -13.51,
+        "peak_dbfs": 2.62,
+        "crest_factor": 6.4,
+        "transient_index": 4.9,
+        "clipped_samples": 1397,
+        "short_loop_similarity": 0.9952,
+        "centroid_hz": 190.9,
+        "spectral_spread_hz": 236.4,
+        "low_ratio": 0.7984,
+        "mid_ratio": 0.2012,
+        "high_ratio": 0.0004
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 61,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 190.9 Hz outside 850-1800 Hz",
+            "peak 2.62 dBFS should be <= -1 dBFS",
+            "space is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 62,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 190.9 Hz outside 700-1500 Hz",
+            "peak 2.62 dBFS should be <= -1 dBFS",
+            "space is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 64,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 190.9 Hz outside 450-1250 Hz",
+            "transient index 4.9 above 4.0",
+            "peak 2.62 dBFS should be <= -1 dBFS",
+            "space is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 63,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 190.9 Hz outside 350-1050 Hz",
+            "transient index 4.9 above 3.2",
+            "peak 2.62 dBFS should be <= -1 dBFS",
+            "short-loop risk 0.9952 similarity"
+          ]
+        },
+        "sleep": {
+          "score": 43,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -13.51 dB outside -38 to -19 dB",
+            "transient index 4.9 above 2.5",
+            "peak 2.62 dBFS should be <= -1 dBFS",
+            "space is not an automatic sleep category",
+            "short-loop risk 0.9952 similarity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "space-dark",
+      "name": "Dark Ambience",
+      "category": "space",
+      "path": "apps/web/public/audio/soundscapes/space/dark-ambience.mp3",
+      "metrics": {
+        "duration_s": 59.3,
+        "rms_db": -12.79,
+        "peak_dbfs": 2.24,
+        "crest_factor": 5.65,
+        "transient_index": 4.56,
+        "clipped_samples": 509,
+        "short_loop_similarity": 0.9807,
+        "centroid_hz": 482.8,
+        "spectral_spread_hz": 293.1,
+        "low_ratio": 0.0769,
+        "mid_ratio": 0.9229,
+        "high_ratio": 0.0003
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 68,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 482.8 Hz outside 850-1800 Hz",
+            "peak 2.24 dBFS should be <= -1 dBFS",
+            "space is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 68,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 482.8 Hz outside 700-1500 Hz",
+            "peak 2.24 dBFS should be <= -1 dBFS",
+            "duration 59.3s short for deepWork",
+            "space is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "peak 2.24 dBFS should be <= -1 dBFS",
+            "duration 59.3s short for relax",
+            "space is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 74,
+          "verdict": "good",
+          "reasons": [
+            "transient index 4.56 above 3.2",
+            "peak 2.24 dBFS should be <= -1 dBFS",
+            "duration 59.3s short for meditate"
+          ]
+        },
+        "sleep": {
+          "score": 52,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -12.79 dB outside -38 to -19 dB",
+            "transient index 4.56 above 2.5",
+            "peak 2.24 dBFS should be <= -1 dBFS",
+            "duration 59.3s short for sleep",
+            "space is not an automatic sleep category"
+          ]
+        }
+      }
+    },
+    {
+      "id": "space-glass-aquaphone",
+      "name": "Glass Aquaphone Drone",
+      "category": "space",
+      "path": "apps/web/public/audio/soundscapes/space/glass-aquaphone-drone.mp3",
+      "metrics": {
+        "duration_s": 267.1,
+        "rms_db": -22.02,
+        "peak_dbfs": -1.03,
+        "crest_factor": 11.2,
+        "transient_index": 4.48,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9889,
+        "centroid_hz": 657.9,
+        "spectral_spread_hz": 465.3,
+        "low_ratio": 0.2284,
+        "mid_ratio": 0.7671,
+        "high_ratio": 0.0039
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 83,
+          "verdict": "good",
+          "reasons": [
+            "centroid 657.9 Hz outside 850-1800 Hz",
+            "space is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "space is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 86,
+          "verdict": "ideal",
+          "reasons": [
+            "space is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 93,
+          "verdict": "ideal",
+          "reasons": [
+            "transient index 4.48 above 3.2"
+          ]
+        },
+        "sleep": {
+          "score": 75,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 4.48 above 2.5",
+            "space is not an automatic sleep category",
+            "sleep hard gate: category is opt-in only",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "space-scifi",
+      "name": "Sci-Fi Ambient Drone",
+      "category": "space",
+      "path": "apps/web/public/audio/soundscapes/space/scifi-ambient-drone.mp3",
+      "metrics": {
+        "duration_s": 165.0,
+        "rms_db": -16.84,
+        "peak_dbfs": -1.51,
+        "crest_factor": 5.84,
+        "transient_index": 11.62,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9985,
+        "centroid_hz": 345.7,
+        "spectral_spread_hz": 570.1,
+        "low_ratio": 0.7578,
+        "mid_ratio": 0.2302,
+        "high_ratio": 0.0097
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 58,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 345.7 Hz outside 850-1800 Hz",
+            "transient index 11.62 above 5.5",
+            "space is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 60,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 345.7 Hz outside 700-1500 Hz",
+            "transient index 11.62 above 4.8",
+            "space is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 68,
+          "verdict": "usable",
+          "reasons": [
+            "transient index 11.62 above 4.0",
+            "space is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 83,
+          "verdict": "good",
+          "reasons": [
+            "transient index 11.62 above 3.2",
+            "short-loop risk 0.9985 similarity"
+          ]
+        },
+        "sleep": {
+          "score": 69,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 11.62 above 2.5",
+            "space is not an automatic sleep category",
+            "short-loop risk 0.9985 similarity",
+            "sleep hard gate: category is opt-in only",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "stream-close",
+      "name": "Stream Up Close",
+      "category": "stream",
+      "path": "apps/web/public/audio/soundscapes/stream/stream-up-close.mp3",
+      "metrics": {
+        "duration_s": 68.9,
+        "rms_db": -51.5,
+        "peak_dbfs": -25.09,
+        "crest_factor": 20.92,
+        "transient_index": 5.61,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9868,
+        "centroid_hz": 732.8,
+        "spectral_spread_hz": 1164.7,
+        "low_ratio": 0.6037,
+        "mid_ratio": 0.3707,
+        "high_ratio": 0.0256
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 77,
+          "verdict": "good",
+          "reasons": [
+            "loudness -51.5 dB outside -26 to -12 dB"
+          ]
+        },
+        "deepWork": {
+          "score": 75,
+          "verdict": "good",
+          "reasons": [
+            "loudness -51.5 dB outside -28 to -13 dB",
+            "duration 68.9s short for deepWork"
+          ]
+        },
+        "relax": {
+          "score": 71,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -51.5 dB outside -32 to -15 dB",
+            "transient index 5.61 above 4.0",
+            "duration 68.9s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 51,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -51.5 dB outside -34 to -16 dB",
+            "transient index 5.61 above 3.2",
+            "duration 68.9s short for meditate",
+            "stream is not an automatic meditate category",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 53,
+          "verdict": "wrong",
+          "reasons": [
+            "loudness -51.5 dB outside -38 to -19 dB",
+            "transient index 5.61 above 2.5",
+            "duration 68.9s short for sleep",
+            "stream is not an automatic sleep category",
+            "sleep hard gate: category is opt-in only"
+          ]
+        }
+      }
+    },
+    {
+      "id": "stream-creek",
+      "name": "Creek",
+      "category": "stream",
+      "path": "apps/web/public/audio/soundscapes/stream/creek-loop.mp3",
+      "metrics": {
+        "duration_s": 36.0,
+        "rms_db": -21.17,
+        "peak_dbfs": 1.23,
+        "crest_factor": 13.19,
+        "transient_index": 3.33,
+        "clipped_samples": 6,
+        "short_loop_similarity": 0.9976,
+        "centroid_hz": 2681.2,
+        "spectral_spread_hz": 1825.9,
+        "low_ratio": 0.0011,
+        "mid_ratio": 0.8132,
+        "high_ratio": 0.1857
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 63,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 2681.2 Hz outside 850-1800 Hz",
+            "peak 1.23 dBFS should be <= -1 dBFS",
+            "duration 36.0s short for focus"
+          ]
+        },
+        "deepWork": {
+          "score": 59,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 2681.2 Hz outside 700-1500 Hz",
+            "peak 1.23 dBFS should be <= -1 dBFS",
+            "duration 36.0s short for deepWork"
+          ]
+        },
+        "relax": {
+          "score": 59,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 2681.2 Hz outside 450-1250 Hz",
+            "peak 1.23 dBFS should be <= -1 dBFS",
+            "duration 36.0s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 37,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 2681.2 Hz outside 350-1050 Hz",
+            "peak 1.23 dBFS should be <= -1 dBFS",
+            "duration 36.0s short for meditate",
+            "stream is not an automatic meditate category",
+            "short-loop risk 0.9976 similarity"
+          ]
+        },
+        "sleep": {
+          "score": 23,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 2681.2 Hz outside 250-850 Hz",
+            "high-frequency energy 18.6% above 12.0%",
+            "transient index 3.33 above 2.5",
+            "peak 1.23 dBFS should be <= -1 dBFS",
+            "duration 36.0s short for sleep"
+          ]
+        }
+      }
+    },
+    {
+      "id": "stream-gentle",
+      "name": "Gentle Stream",
+      "category": "stream",
+      "path": "apps/web/public/audio/soundscapes/stream/gentle-stream.mp3",
+      "metrics": {
+        "duration_s": 63.7,
+        "rms_db": -30.62,
+        "peak_dbfs": -9.42,
+        "crest_factor": 11.47,
+        "transient_index": 3.84,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9978,
+        "centroid_hz": 2042.0,
+        "spectral_spread_hz": 1616.6,
+        "low_ratio": 0.0148,
+        "mid_ratio": 0.9002,
+        "high_ratio": 0.085
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "centroid 2042.0 Hz outside 850-1800 Hz",
+            "loudness -30.62 dB outside -26 to -12 dB"
+          ]
+        },
+        "deepWork": {
+          "score": 77,
+          "verdict": "good",
+          "reasons": [
+            "centroid 2042.0 Hz outside 700-1500 Hz",
+            "duration 63.7s short for deepWork"
+          ]
+        },
+        "relax": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "centroid 2042.0 Hz outside 450-1250 Hz",
+            "duration 63.7s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 47,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 2042.0 Hz outside 350-1050 Hz",
+            "duration 63.7s short for meditate",
+            "stream is not an automatic meditate category",
+            "short-loop risk 0.9978 similarity",
+            "meditate hard gate: category is opt-in only"
+          ]
+        },
+        "sleep": {
+          "score": 41,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 2042.0 Hz outside 250-850 Hz",
+            "transient index 3.84 above 2.5",
+            "duration 63.7s short for sleep",
+            "stream is not an automatic sleep category",
+            "short-loop risk 0.9978 similarity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "stream-trickling",
+      "name": "Trickling Stream",
+      "category": "stream",
+      "path": "apps/web/public/audio/soundscapes/stream/trickling-stream.mp3",
+      "metrics": {
+        "duration_s": 32.1,
+        "rms_db": -22.71,
+        "peak_dbfs": -2.36,
+        "crest_factor": 10.41,
+        "transient_index": 3.41,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9982,
+        "centroid_hz": 2746.5,
+        "spectral_spread_hz": 2438.5,
+        "low_ratio": 0.0263,
+        "mid_ratio": 0.7561,
+        "high_ratio": 0.2176
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 70,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 2746.5 Hz outside 850-1800 Hz",
+            "duration 32.1s short for focus"
+          ]
+        },
+        "deepWork": {
+          "score": 69,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 2746.5 Hz outside 700-1500 Hz",
+            "duration 32.1s short for deepWork"
+          ]
+        },
+        "relax": {
+          "score": 69,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 2746.5 Hz outside 450-1250 Hz",
+            "duration 32.1s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 43,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 2746.5 Hz outside 350-1050 Hz",
+            "high-frequency energy 21.8% above 18.0%",
+            "duration 32.1s short for meditate",
+            "stream is not an automatic meditate category",
+            "short-loop risk 0.9982 similarity"
+          ]
+        },
+        "sleep": {
+          "score": 27,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 2746.5 Hz outside 250-850 Hz",
+            "high-frequency energy 21.8% above 12.0%",
+            "transient index 3.41 above 2.5",
+            "duration 32.1s short for sleep",
+            "stream is not an automatic sleep category"
+          ]
+        }
+      }
+    },
+    {
+      "id": "thunder-straget",
+      "name": "Thunder",
+      "category": "thunder",
+      "path": "apps/web/public/audio/soundscapes/thunder/thunder-straget.mp3",
+      "metrics": {
+        "duration_s": 33.6,
+        "rms_db": -24.38,
+        "peak_dbfs": 1.52,
+        "crest_factor": 19.72,
+        "transient_index": 10.43,
+        "clipped_samples": 41,
+        "short_loop_similarity": 0.9784,
+        "centroid_hz": 68.0,
+        "spectral_spread_hz": 213.7,
+        "low_ratio": 0.9666,
+        "mid_ratio": 0.0323,
+        "high_ratio": 0.0011
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 38,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 68.0 Hz outside 850-1800 Hz",
+            "transient index 10.43 above 5.5",
+            "peak 1.52 dBFS should be <= -1 dBFS",
+            "duration 33.6s short for focus",
+            "thunder is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 35,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 68.0 Hz outside 700-1500 Hz",
+            "transient index 10.43 above 4.8",
+            "peak 1.52 dBFS should be <= -1 dBFS",
+            "duration 33.6s short for deepWork",
+            "thunder is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 43,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 68.0 Hz outside 450-1250 Hz",
+            "transient index 10.43 above 4.0",
+            "peak 1.52 dBFS should be <= -1 dBFS",
+            "duration 33.6s short for relax",
+            "thunder is not an automatic relax category"
+          ]
+        },
+        "meditate": {
+          "score": 44,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 68.0 Hz outside 350-1050 Hz",
+            "transient index 10.43 above 3.2",
+            "peak 1.52 dBFS should be <= -1 dBFS",
+            "duration 33.6s short for meditate",
+            "thunder is not an automatic meditate category"
+          ]
+        },
+        "sleep": {
+          "score": 46,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 68.0 Hz outside 250-850 Hz",
+            "transient index 10.43 above 2.5",
+            "peak 1.52 dBFS should be <= -1 dBFS",
+            "duration 33.6s short for sleep",
+            "thunder is not an automatic sleep category"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wind-gentle",
+      "name": "Gentle Breeze",
+      "category": "wind",
+      "path": "apps/web/public/audio/soundscapes/wind/gentle-breeze.mp3",
+      "metrics": {
+        "duration_s": 156.6,
+        "rms_db": -40.52,
+        "peak_dbfs": -21.42,
+        "crest_factor": 9.01,
+        "transient_index": 3.72,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9934,
+        "centroid_hz": 347.5,
+        "spectral_spread_hz": 375.9,
+        "low_ratio": 0.5132,
+        "mid_ratio": 0.4855,
+        "high_ratio": 0.0012
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 55,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 347.5 Hz outside 850-1800 Hz",
+            "loudness -40.52 dB outside -26 to -12 dB",
+            "wind is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 60,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 347.5 Hz outside 700-1500 Hz",
+            "loudness -40.52 dB outside -28 to -13 dB",
+            "wind is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 87,
+          "verdict": "ideal",
+          "reasons": [
+            "loudness -40.52 dB outside -32 to -15 dB"
+          ]
+        },
+        "meditate": {
+          "score": 90,
+          "verdict": "ideal",
+          "reasons": [
+            "loudness -40.52 dB outside -34 to -16 dB"
+          ]
+        },
+        "sleep": {
+          "score": 89,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 3.72 above 2.5",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wind-noise",
+      "name": "Wind Noise",
+      "category": "wind",
+      "path": "apps/web/public/audio/soundscapes/wind/wind-noise.mp3",
+      "metrics": {
+        "duration_s": 240.0,
+        "rms_db": -42.58,
+        "peak_dbfs": -26.14,
+        "crest_factor": 6.64,
+        "transient_index": 3.23,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.997,
+        "centroid_hz": 1304.2,
+        "spectral_spread_hz": 358.3,
+        "low_ratio": 0.0,
+        "mid_ratio": 1.0,
+        "high_ratio": 0.0
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 68,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -42.58 dB outside -26 to -12 dB",
+            "wind is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 69,
+          "verdict": "usable",
+          "reasons": [
+            "loudness -42.58 dB outside -28 to -13 dB",
+            "wind is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 86,
+          "verdict": "ideal",
+          "reasons": [
+            "loudness -42.58 dB outside -32 to -15 dB"
+          ]
+        },
+        "meditate": {
+          "score": 81,
+          "verdict": "good",
+          "reasons": [
+            "centroid 1304.2 Hz outside 350-1050 Hz",
+            "loudness -42.58 dB outside -34 to -16 dB",
+            "short-loop risk 0.997 similarity"
+          ]
+        },
+        "sleep": {
+          "score": 71,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 1304.2 Hz outside 250-850 Hz",
+            "loudness -42.58 dB outside -38 to -19 dB",
+            "transient index 3.23 above 2.5",
+            "short-loop risk 0.997 similarity"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wind-soft",
+      "name": "Soft Wind",
+      "category": "wind",
+      "path": "apps/web/public/audio/soundscapes/wind/soft-wind.mp3",
+      "metrics": {
+        "duration_s": 35.7,
+        "rms_db": -35.45,
+        "peak_dbfs": -20.34,
+        "crest_factor": 5.69,
+        "transient_index": 7.2,
+        "clipped_samples": 0,
+        "short_loop_similarity": 0.9767,
+        "centroid_hz": 276.1,
+        "spectral_spread_hz": 154.5,
+        "low_ratio": 0.976,
+        "mid_ratio": 0.0119,
+        "high_ratio": 0.0121
+      },
+      "mood_fit": {
+        "focus": {
+          "score": 50,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 276.1 Hz outside 850-1800 Hz",
+            "loudness -35.45 dB outside -26 to -12 dB",
+            "transient index 7.2 above 5.5",
+            "duration 35.7s short for focus",
+            "wind is not an automatic focus category"
+          ]
+        },
+        "deepWork": {
+          "score": 50,
+          "verdict": "wrong",
+          "reasons": [
+            "centroid 276.1 Hz outside 700-1500 Hz",
+            "loudness -35.45 dB outside -28 to -13 dB",
+            "transient index 7.2 above 4.8",
+            "duration 35.7s short for deepWork",
+            "wind is not an automatic deepWork category"
+          ]
+        },
+        "relax": {
+          "score": 71,
+          "verdict": "usable",
+          "reasons": [
+            "centroid 276.1 Hz outside 450-1250 Hz",
+            "loudness -35.45 dB outside -32 to -15 dB",
+            "transient index 7.2 above 4.0",
+            "duration 35.7s short for relax"
+          ]
+        },
+        "meditate": {
+          "score": 72,
+          "verdict": "good",
+          "reasons": [
+            "transient index 7.2 above 3.2",
+            "duration 35.7s short for meditate"
+          ]
+        },
+        "sleep": {
+          "score": 76,
+          "verdict": "wrong",
+          "reasons": [
+            "transient index 7.2 above 2.5",
+            "duration 35.7s short for sleep",
+            "sleep hard gate: short file can expose audible loop seams",
+            "sleep hard gate: too bright or transient"
+          ]
+        }
+      }
+    }
+  ]
+}

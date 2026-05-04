@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import Navbar from '../components/layout/Navbar.astro';
+import ArgoBeatPlayer from '../components/player/ArgoBeatPlayer.astro';
+---
+
+<Base title="ArgoBeat — Focus, Sleep, and Meditation Audio" description="Music-first focus, relaxation, and sleep audio with subtle target-rate modulation. Choose a mood and start listening.">
+  <Navbar currentPage="app" />
+  <main class="app-page">
+    <div class="app-stack">
+      <ArgoBeatPlayer />
+    </div>
+  </main>
+</Base>
+
+<style>
+  .app-page {
+    min-height: calc(100vh - 60px);
+    padding: 32px 20px 56px;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 100%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
+      var(--color-bg-primary);
+  }
+
+  .app-stack {
+    width: min(1240px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 18px;
+  }
+
+  @media (max-width: 640px) {
+    .app-page {
+      padding: 20px 8px 32px;
+    }
+
+    .app-stack {
+      gap: 16px;
+    }
+  }
+</style>

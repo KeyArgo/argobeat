@@ -1,0 +1,1990 @@
+---
+/**
+ * ArgoBeatPlayer — main player orchestrator.
+ *
+ * Composes MoodSelector, WaveVisualizer, SessionTimer, and VolumeControls
+ * into a cohesive player interface. Imports and manages the ArgoBeatEngine
+ * lifecycle, routing events between the engine and child components.
+ *
+ * The engine is initialized lazily on first Play click (user gesture required
+ * for AudioContext) and emits state via window CustomEvents so all child
+ * components stay in sync without tight coupling.
+ */
+import MoodSelector from './ModeSelector.astro';
+import WaveVisualizer from './WaveVisualizer.astro';
+import DebugScorePanel from './DebugScorePanel.astro';
+import SessionTimer from './SessionTimer.astro';
+import VolumeControls from './VolumeControls.astro';
+
+/**
+ * Eligible soundscape categories per mood (build-time, matches engine affinities).
+ * Used to render the soundscape dropdown options.
+ */
+const soundscapeCategories = [
+  { value: 'gongs', label: 'Gongs / singing bowls / chimes' },
+  { value: 'rain', label: 'Rain / weather' },
+  { value: 'ocean', label: 'Ocean / coast / whales' },
+  { value: 'forest', label: 'Forest / birds / insects' },
+  { value: 'jungle', label: 'Jungle / frogs / night' },
+  { value: 'stream', label: 'Rivers / streams / waterfall' },
+  { value: 'wind', label: 'Wind / breeze' },
+  { value: 'fire', label: 'Fire / fireplace' },
+  { value: 'thunder', label: 'Thunder / storms' },
+  { value: 'space', label: 'Space / drone' },
+  { value: 'cafe', label: 'Cafe / city' },
+];
+---
+
+<div class="player-shell" id="player-shell">
+  <!-- Mood Selection -->
+  <section class="player-section">
+    <MoodSelector />
+  </section>
+
+  <!-- Source Toggle + Soundscape Selector -->
+  <section class="player-section source-section">
+    <div class="source-row">
+      <div class="source-toggle" role="tablist" aria-label="Audio source">
+        <button class="source-tab" role="tab" aria-selected="false" data-source="soundscape" id="tab-soundscapes">
+          Soundscapes
+        </button>
+        <button class="source-tab active" role="tab" aria-selected="true" data-source="both" id="tab-both">
+          Both
+        </button>
+        <button class="source-tab" role="tab" aria-selected="false" data-source="music" id="tab-music">
+          Music
+        </button>
+      </div>
+      <div class="soundscape-picker">
+        <label for="soundscape-select" class="sr-only">Soundscape</label>
+        <select id="soundscape-select" aria-label="Select soundscape">
+          <option value="auto">Auto (broader nature mix for this mood)</option>
+          {soundscapeCategories.map((sc) => (
+            <option value={sc.value}>{sc.label}</option>
+          ))}
+        </select>
+        <div class="soundscape-helper">
+          Rotates across rain, ocean, rivers, trees, birds, crickets, and night-insect beds where the current catalog fits the selected mood.
+        </div>
+      </div>
+      <div class="boost-panel" id="boost-panel" hidden>
+        <button class="boost-chip" id="btn-boost" type="button" aria-pressed="false">
+          Intensity mix
+        </button>
+        <div class="boost-helper" id="boost-helper">
+          Slightly raises entrainment depth and thickens the mix for focus and deep-work sessions. Best with headphones. No medical claims.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Visualizer -->
+  <section class="player-section">
+    <WaveVisualizer />
+  </section>
+
+  <!-- Transport Controls -->
+  <section class="player-section controls-section">
+    <div class="transport-controls">
+      <button class="transport-btn stop-btn" id="btn-stop" disabled aria-label="Stop">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+      </button>
+      <button class="transport-btn play-btn" id="btn-play" aria-label="Play">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </button>
+      <button class="transport-btn pause-btn" id="btn-pause" disabled aria-label="Pause">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+        </svg>
+      </button>
+      <button class="transport-btn skip-btn" id="btn-skip" disabled aria-label="Skip to the next music track" title="Only one track available for this mode">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16 6h2v12h-2V6zM6 18l8.5-6L6 6v12z" />
+        </svg>
+        <span class="skip-btn-label" id="btn-skip-label">Next track</span>
+      </button>
+    </div>
+    <div class="status-line" id="status-line">Select a mood and press play</div>
+    <div class="feedback-bar" id="feedbackBar" style="display: none;">
+      <button class="thumbs-btn thumbs-up" id="thumbsUp" title="I like this track">👍</button>
+      <button class="thumbs-btn thumbs-down" id="thumbsDown" title="Not for me">👎</button>
+      <span class="learning-progress" id="learningProgress"></span>
+    </div>
+  </section>
+
+  <!-- Kimi Session Director -->
+  <section class="player-section" id="kimi-section">
+    <div class="kimi-card" id="kimi-card">
+      <div class="kimi-header">
+        <div class="kimi-title-wrap">
+          <span class="kimi-badge">✦ Kimi</span>
+          <span class="kimi-title">Session Director</span>
+        </div>
+        <span class="kimi-status" id="kimi-status">Ready to shape your next sprint.</span>
+        <button class="kimi-ask-btn" id="kimi-ask" title="Refresh Kimi's read">Refresh read</button>
+      </div>
+      <div class="kimi-presets">
+        <button class="kimi-scene-btn kimi-scene-primary" id="kimi-scene-focus" type="button">Start Focus Sprint</button>
+        <button class="kimi-scene-btn" id="kimi-scene-load" type="button">Reduce Cognitive Load</button>
+        <button class="kimi-scene-btn" id="kimi-scene-recover" type="button">Recover From Distraction</button>
+        <button class="kimi-scene-btn kimi-scene-toggle" id="kimi-demo-toggle" type="button" aria-pressed="false">Judge Speedrun: Off</button>
+      </div>
+      <div class="kimi-suggestion" id="kimi-suggestion"></div>
+      <div class="kimi-reasons" id="kimi-reasons" style="display:none;"></div>
+      <div class="kimi-actions" id="kimi-actions" style="display:none;">
+        <button class="kimi-btn kimi-apply" id="kimi-apply">Apply</button>
+        <button class="kimi-btn kimi-dismiss" id="kimi-dismiss">Dismiss</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Timer -->
+  <section class="player-section">
+    <SessionTimer />
+  </section>
+
+  <!-- Volume Controls -->
+  <section class="player-section">
+    <VolumeControls />
+  </section>
+
+  <!-- Playback Diagnostics -->
+  <section class="player-section diagnostics-section">
+    <DebugScorePanel />
+  </section>
+</div>
+
+<script>
+  import { ArgoBeatEngine } from '@argobeat/engine';
+
+  // ── State ──
+  let engine: ArgoBeatEngine | null = null;
+  let selectedMood: string = 'focus';
+  let selectedSoundscape: string = 'auto';
+  let selectedSource: 'soundscape' | 'music' | 'both' = 'both';
+  let stimulationBoost = false;
+  let activeSource: 'soundscape' | 'music' | 'both' = 'both';
+  let currentTrackId: string | null = null;
+  let isPlaying = false;
+  let isPaused = false;
+  let lastKimiCueKey: string | null = null;
+  let demoMinuteMode = false;
+  let sessionDurationOverrideMinutes: number | null = null;
+  let suppressMoodRestart = false;
+
+  // ── DOM Refs ──
+  const btnPlay = document.getElementById('btn-play') as HTMLButtonElement;
+  const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
+  const btnStop = document.getElementById('btn-stop') as HTMLButtonElement;
+  const btnSkip = document.getElementById('btn-skip') as HTMLButtonElement;
+  const btnBoost = document.getElementById('btn-boost') as HTMLButtonElement | null;
+  const boostPanel = document.getElementById('boost-panel') as HTMLDivElement | null;
+  const statusLine = document.getElementById('status-line')!;
+  const soundscapeSelect = document.getElementById('soundscape-select') as HTMLSelectElement;
+
+  // ── Mood labels for status display ──
+  const MOOD_LABELS: Record<string, string> = {
+    focus: 'Focus',
+    deepWork: 'Deep Work',
+    relax: 'Relax',
+    meditate: 'Meditate',
+    sleep: 'Sleep',
+  };
+
+  function formatTrackName(trackId: string | null): string {
+    if (!trackId) return '';
+    if (trackId === 'procedural-fallback') return 'Adaptive Music';
+    return trackId
+      .replace(/^(lofi|cosmic)-/, '')
+      .replace(/-(focus|deep|relax|meditate|sleep)$/, '')
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function preferredSourceForMood(mood: string): 'soundscape' | 'music' | 'both' {
+    switch (mood) {
+      case 'focus':
+      case 'deepWork':
+      case 'relax':
+        return 'both';
+      case 'sleep':
+        return 'soundscape';
+      default:
+        return 'both';
+    }
+  }
+
+  function isSoundscapeOnlyMood(mood: string): boolean {
+    return mood === 'sleep';
+  }
+
+  function supportsStimulationBoost(mood: string, source: 'soundscape' | 'music' | 'both'): boolean {
+    return !isSoundscapeOnlyMood(mood) && source !== 'soundscape';
+  }
+
+  function syncBoostUi(): void {
+    const eligible = supportsStimulationBoost(selectedMood, selectedSource);
+    if (!eligible) {
+      stimulationBoost = false;
+    }
+    if (boostPanel) boostPanel.hidden = !eligible;
+    if (btnBoost) {
+      btnBoost.disabled = !eligible;
+      btnBoost.classList.toggle('active', eligible && stimulationBoost);
+      btnBoost.setAttribute('aria-pressed', eligible && stimulationBoost ? 'true' : 'false');
+    }
+  }
+
+  function formatSoundscapeName(category: string | null, variation: string | null): string {
+    if (!category) return '';
+    const categoryName = formatTrackName(category);
+    const variationName = formatTrackName(variation);
+    return variationName ? `${categoryName} - ${variationName}` : categoryName;
+  }
+
+  function updateNowPlayingStatus(state = engine?.getState()): void {
+    const moodName = MOOD_LABELS[selectedMood] || selectedMood;
+    const trackName = formatTrackName(state?.currentMusicTrack ?? null);
+    const soundscapeName = formatSoundscapeName(
+      state?.soundscapeCategory ?? null,
+      state?.currentVariation ?? null,
+    );
+    const sourceMode = state?.audioSource ?? selectedSource;
+    const layers =
+      sourceMode === 'soundscape'
+        ? [soundscapeName]
+        : [trackName, soundscapeName];
+    const visibleLayers = layers.filter(Boolean);
+
+    statusLine.textContent = visibleLayers.length
+      ? `Playing: ${moodName} - ${visibleLayers.join(' + ')}`
+      : `Playing: ${moodName}`;
+  }
+
+  function getSkipPresentation(source = effectiveAudioSource): {
+    label: string;
+    ariaLabel: string;
+    pendingStatus: string;
+    action: 'skip-soundscape' | 'skip-music' | 'refresh-mix';
+  } {
+    switch (source) {
+      case 'soundscape':
+        return {
+          label: 'Next ambience',
+          ariaLabel: 'Skip to the next ambience variation',
+          pendingStatus: 'Switching ambience...',
+          action: 'skip-soundscape',
+        };
+      case 'music':
+        return {
+          label: 'Next track',
+          ariaLabel: 'Skip to the next music track',
+          pendingStatus: 'Switching track...',
+          action: 'skip-music',
+        };
+      default:
+        return {
+          label: 'Fresh mix',
+          ariaLabel: 'Randomize a fresh music and ambience mix',
+          pendingStatus: 'Skipping to a fresh mix...',
+          action: 'refresh-mix',
+        };
+    }
+  }
+
+  function scheduleStatusRefresh(delayMs = 2000): void {
+    if (statusRefreshTimer !== null) {
+      window.clearTimeout(statusRefreshTimer);
+    }
+
+    statusRefreshTimer = window.setTimeout(() => {
+      statusRefreshTimer = null;
+      if (engine && (isPlaying || isPaused)) {
+        updateNowPlayingStatus(engine.getState());
+      }
+    }, delayMs);
+  }
+
+  function updateSkipButtonCopy(source = effectiveAudioSource): void {
+    const presentation = getSkipPresentation(source);
+    btnSkipLabel.textContent = presentation.label;
+    btnSkip.setAttribute('aria-label', presentation.ariaLabel);
+    btnSkip.title = btnSkip.disabled ? 'Only one track available for this mode' : presentation.label;
+  }
+
+  function performSkipAction(
+    action: 'skip-soundscape' | 'skip-music' | 'refresh-mix',
+    pendingStatus?: string,
+    reason?: string,
+  ): boolean {
+    if (!engine || !isPlaying) return false;
+
+    const suffix = reason ? ` — ${reason}` : '';
+
+    if (action === 'skip-soundscape') {
+      engine.skipSoundscape();
+      statusLine.textContent = `${pendingStatus ?? 'Switching ambience...'}${suffix}`;
+      scheduleStatusRefresh();
+      return true;
+    }
+
+    if (action === 'skip-music') {
+      engine.skipMusic();
+      statusLine.textContent = `${pendingStatus ?? 'Switching track...'}${suffix}`;
+      showFeedbackBar();
+      scheduleStatusRefresh();
+      return true;
+    }
+
+    engine.skipMusic();
+    if (effectiveAudioSource !== 'music') {
+      engine.skipSoundscape();
+    }
+    statusLine.textContent = `${pendingStatus ?? 'Refreshing mix...'}${suffix}`;
+    showFeedbackBar();
+    scheduleStatusRefresh(2500);
+    return true;
+  }
+
+  // ── Valid soundscape categories (must match SoundscapeCategory type) ──
+  const VALID_CATEGORIES = new Set([
+    'auto', 'rain', 'ocean', 'forest', 'cafe', 'fire', 'space', 'stream', 'wind', 'thunder', 'gongs', 'jungle',
+  ]);
+
+  function resetSoundscapeToAuto(): void {
+    selectedSoundscape = 'auto';
+    soundscapeSelect.value = 'auto';
+    localStorage.removeItem('argobeat-soundscape');
+  }
+
+  // Soundscapes should start from the mood's best-fit automatic pool.
+  resetSoundscapeToAuto();
+
+  // ── Engine Initialization (lazy, on first user gesture) ──
+  async function ensureEngine(): Promise<ArgoBeatEngine> {
+    if (!engine) {
+      engine = new ArgoBeatEngine();
+      await engine.initialize();
+
+      // Forward analyser to visualizer
+      const analyser = engine.getAnalyser();
+      if (analyser) {
+        window.dispatchEvent(
+          new CustomEvent('argobeat-engine-ready', {
+            detail: { analyser },
+          })
+        );
+      }
+
+      // Wire engine events to window CustomEvents for child components
+      // Also drive local transport state from engine state to prevent race conditions
+      engine.on('stateChange', (state) => {
+        isPlaying = state.isPlaying;
+        isPaused = state.isPaused;
+        activeSource = state.audioSource ?? activeSource;
+        currentTrackId = state.currentMusicTrack ?? null;
+        effectiveAudioSource = state.audioSource ?? selectedSource;
+        updateTransport(state.isPlaying || state.isPaused, state.isPaused);
+        updateSkipButtonCopy(effectiveAudioSource);
+
+        window.dispatchEvent(
+          new CustomEvent('argobeat-state-change', {
+            detail: {
+              isPlaying: state.isPlaying,
+              isPaused: state.isPaused,
+              mood: state.mood ?? selectedMood,
+              targetHz: state.sessionHz ?? null,
+              currentMusicTrack: state.currentMusicTrack ?? null,
+              soundscapeCategory: state.soundscapeCategory ?? null,
+              currentVariation: state.currentVariation ?? null,
+              audioSource: state.audioSource ?? selectedSource,
+              entrainmentMethod: state.entrainmentMethod ?? 'invisible',
+            },
+          })
+        );
+      });
+
+      engine.on('tick', (elapsed, total) => {
+        window.dispatchEvent(
+          new CustomEvent('argobeat-tick', {
+            detail: { elapsedSeconds: elapsed, sessionSeconds: total },
+          })
+        );
+      });
+
+      engine.on('musicTrackChange', (_from, to) => {
+        currentTrackId = to;
+        updateNowPlayingStatus();
+        showFeedbackBar();
+      });
+
+      engine.on('variationChange', () => {
+        updateNowPlayingStatus();
+      });
+
+      engine.on('sessionComplete', () => {
+        statusLine.textContent = 'Session complete';
+        updateTransport(false, false);
+        kimiRecapVisible = true;
+        kimiLiveSessionActive = false;
+        showKimiSuggestion(generateKimiRecap());
+      });
+
+      engine.on('error', (err) => {
+        console.error('[ArgoBeat]', err);
+        statusLine.textContent = 'Audio error — try refreshing';
+      });
+    }
+    return engine;
+  }
+
+  // ── Transport Actions ──
+
+  async function startPlayback() {
+    try {
+      const eng = await ensureEngine();
+
+      // Play with optional soundscape category override (validate first)
+      const playOptions: { category?: any; stimulationBoost?: boolean; durationMinutes?: number } = {};
+      if (selectedSoundscape !== 'auto' && VALID_CATEGORIES.has(selectedSoundscape) && selectedSoundscape !== 'auto') {
+        playOptions.category = selectedSoundscape;
+      }
+      if (stimulationBoost && supportsStimulationBoost(selectedMood, selectedSource)) {
+        playOptions.stimulationBoost = true;
+      }
+      if (sessionDurationOverrideMinutes && sessionDurationOverrideMinutes > 0) {
+        playOptions.durationMinutes = sessionDurationOverrideMinutes;
+      }
+
+      await eng.play(selectedMood as any, { ...playOptions, source: selectedSource });
+      activeSource = eng.getState().audioSource ?? selectedSource;
+      // State (isPlaying/isPaused) is now driven by engine stateChange event
+
+      // Re-send analyser ref (graph is rebuilt on each play)
+      const analyser = eng.getAnalyser();
+      if (analyser) {
+        window.dispatchEvent(
+          new CustomEvent('argobeat-engine-ready', {
+            detail: { analyser },
+          })
+        );
+      }
+
+      updateNowPlayingStatus(eng.getState());
+
+      // Show feedback bar for rating
+      showFeedbackBar();
+
+      // Track session start (localStorage, privacy-first)
+      trackSession('start', selectedMood);
+    } catch (err) {
+      console.error('[ArgoBeat] Play failed:', err);
+      statusLine.textContent = 'Failed to start — tap to retry';
+    }
+  }
+
+  function doPause() {
+    if (!engine) return;
+    engine.pause();
+    // State updated by engine stateChange event
+    statusLine.textContent = 'Paused';
+  }
+
+  function doResume() {
+    if (!engine) return;
+    engine.resume();
+    // State updated by engine stateChange event
+    updateNowPlayingStatus();
+  }
+
+  function doStop() {
+    if (!engine) return;
+
+    // Track if user stopped early
+    const state = engine.getState();
+    if (state.elapsedSeconds > 10) {
+      trackSession('stopped', selectedMood);
+    }
+
+    engine.stop();
+    // State updated by engine stateChange event
+    statusLine.textContent = 'Select a mood and press play';
+    hideFeedbackBar();
+  }
+
+  async function doSkip() {
+    if (!engine || !isPlaying) return;
+
+    const state = engine.getState();
+    const liveSource = state.audioSource ?? activeSource ?? selectedSource;
+
+    if (liveSource === 'both') {
+      const [musicSkipped, soundscapeSkipped] = await Promise.all([
+        engine.skipMusic(),
+        engine.skipSoundscape(),
+      ]);
+
+      if (musicSkipped && soundscapeSkipped) {
+        statusLine.textContent = 'Skipping to a fresh mix...';
+        showFeedbackBar();
+        return;
+      }
+      if (musicSkipped) {
+        statusLine.textContent = 'Skipping to next music...';
+        showFeedbackBar();
+        return;
+      }
+      if (soundscapeSkipped) {
+        statusLine.textContent = 'Skipping to next soundscape...';
+        return;
+      }
+
+      statusLine.textContent = 'No alternate mix available right now';
+      return;
+    }
+
+    if (liveSource === 'music') {
+      const skipped = await engine.skipMusic();
+      statusLine.textContent = skipped
+        ? 'Skipping to next music...'
+        : 'No alternate music track available';
+      if (skipped) showFeedbackBar();
+      return;
+    }
+
+    const soundscapeSkipped = await engine.skipSoundscape();
+    if (soundscapeSkipped) {
+      statusLine.textContent = 'Skipping to next soundscape...';
+      return;
+    }
+
+    const musicFallback = state.currentMusicTrack ? await engine.skipMusic() : false;
+    statusLine.textContent = musicFallback
+      ? 'Soundscape unavailable, skipping music instead...'
+      : 'No alternate soundscape available';
+    if (musicFallback) showFeedbackBar();
+  }
+
+  function updateTransport(playing: boolean, paused: boolean) {
+    btnPlay.disabled = playing && !paused;
+    btnPause.disabled = !playing;
+    btnStop.disabled = !playing && !paused;
+    btnSkip.disabled = !playing;
+
+    // Visual state on play button
+    btnPlay.classList.toggle('active-glow', playing && !paused);
+  }
+
+  // ── Session Tracking (localStorage, privacy-first) ──
+
+  function trackSession(action: string, moodId: string) {
+    try {
+      const stats = JSON.parse(localStorage.getItem('argobeat-stats') || '{}');
+      if (!stats.totalSessions) stats.totalSessions = 0;
+      if (!stats.totalMinutes) stats.totalMinutes = 0;
+      if (!stats.moods) stats.moods = {};
+
+      if (action === 'complete' || action === 'stopped') {
+        const state = engine?.getState();
+        stats.totalSessions++;
+        stats.totalMinutes += Math.round((state?.elapsedSeconds ?? 0) / 60);
+        stats.moods[moodId] = (stats.moods[moodId] || 0) + 1;
+        stats.lastSession = new Date().toISOString();
+      }
+
+      localStorage.setItem('argobeat-stats', JSON.stringify(stats));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
+
+  // ── Event Bindings ──
+
+  btnPlay.addEventListener('click', () => {
+    if (isPaused) doResume();
+    else if (!isPlaying) startPlayback();
+    // If already playing, no-op — don't start a new session
+  });
+
+  btnPause.addEventListener('click', () => {
+    if (isPlaying && !isPaused) doPause();
+    else if (isPaused) doResume();
+  });
+
+  btnStop.addEventListener('click', () => doStop());
+
+  btnSkip.addEventListener('click', () => {
+    void doSkip();
+  });
+
+  // ── Thumbs Up/Down Feedback System ──
+
+  const PREFS_KEY = 'argobeat-user-preferences';
+  const LEARNING_THRESHOLD = 10;
+  const feedbackBar = document.getElementById('feedbackBar');
+  const thumbsUp = document.getElementById('thumbsUp') as HTMLButtonElement;
+  const thumbsDown = document.getElementById('thumbsDown') as HTMLButtonElement;
+  const learningProgress = document.getElementById('learningProgress');
+
+  function loadPrefs() {
+    try {
+      const stored = localStorage.getItem(PREFS_KEY);
+      return stored ? JSON.parse(stored) : {
+        version: '2.0', createdAt: Date.now(), updatedAt: Date.now(),
+        feedbackCount: { thumbsUp: 0, thumbsDown: 0 }, trackRatings: []
+      };
+    } catch { return { version: '2.0', createdAt: Date.now(), updatedAt: Date.now(), feedbackCount: { thumbsUp: 0, thumbsDown: 0 }, trackRatings: [] }; }
+  }
+
+  function savePrefs(prefs: any) {
+    prefs.updatedAt = Date.now();
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  }
+
+  function updateLearningUI() {
+    if (!learningProgress) return;
+    const prefs = loadPrefs();
+    const count = prefs.feedbackCount.thumbsUp;
+    if (count < LEARNING_THRESHOLD) {
+      learningProgress.textContent = `Teaching ArgoBeat: ${count}/${LEARNING_THRESHOLD}`;
+    } else {
+      learningProgress.textContent = '✓ Adapting to your preferences';
+    }
+  }
+
+  function rateTrack(rating: 'up' | 'down') {
+    const prefs = loadPrefs();
+    const trackId = currentTrackId ?? `${selectedMood}-${Date.now()}`;
+    prefs.trackRatings.push({ id: trackId, mood: selectedMood, rating, timestamp: Date.now() });
+    if (rating === 'up') prefs.feedbackCount.thumbsUp++;
+    else prefs.feedbackCount.thumbsDown++;
+    savePrefs(prefs);
+
+    // Visual feedback: disable buttons, highlight chosen
+    thumbsUp.disabled = true;
+    thumbsDown.disabled = true;
+    if (rating === 'up') thumbsUp.classList.add('rated');
+    else thumbsDown.classList.add('rated');
+    updateLearningUI();
+  }
+
+  function showFeedbackBar() {
+    if (feedbackBar) feedbackBar.style.display = 'flex';
+    thumbsUp.disabled = false;
+    thumbsDown.disabled = false;
+    thumbsUp.classList.remove('rated');
+    thumbsDown.classList.remove('rated');
+    updateLearningUI();
+  }
+
+  function hideFeedbackBar() {
+    if (feedbackBar) feedbackBar.style.display = 'none';
+  }
+
+  thumbsUp?.addEventListener('click', () => rateTrack('up'));
+  thumbsDown?.addEventListener('click', () => rateTrack('down'));
+
+  soundscapeSelect.addEventListener('change', () => {
+    selectedSoundscape = VALID_CATEGORIES.has(soundscapeSelect.value) ? soundscapeSelect.value : 'auto';
+    soundscapeSelect.value = selectedSoundscape;
+    localStorage.removeItem('argobeat-soundscape');
+    // If currently playing, restart with the new soundscape
+    if (isPlaying && engine) {
+      doStop();
+      setTimeout(() => startPlayback(), 150);
+    }
+  });
+
+  // Source toggle: Soundscapes / Both / Music
+  const sourceTabs = document.querySelectorAll<HTMLButtonElement>('.source-tab');
+  const soundscapePicker = document.querySelector<HTMLElement>('.soundscape-picker');
+
+  function setSourceMode(source: 'soundscape' | 'music' | 'both'): void {
+    selectedSource = isSoundscapeOnlyMood(selectedMood) ? 'soundscape' : source;
+    if (!isPlaying) {
+      effectiveAudioSource = selectedSource;
+    }
+    sourceTabs.forEach((tab) => {
+      const tabSource = tab.dataset.source;
+      const disabled = isSoundscapeOnlyMood(selectedMood) && tabSource !== 'soundscape';
+      const active = tabSource === selectedSource;
+      tab.disabled = disabled;
+      tab.title = disabled ? 'Sleep and meditation use soundscapes only until suitable music is approved.' : '';
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    });
+
+    if (soundscapePicker) {
+      soundscapePicker.style.display = selectedSource === 'music' ? 'none' : '';
+    }
+
+    syncBoostUi();
+  }
+
+  sourceTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      if (tab.disabled) return;
+      const source = tab.dataset.source as 'soundscape' | 'music' | 'both' | undefined;
+      setSourceMode(source || preferredSourceForMood(selectedMood));
+      localStorage.removeItem('argobeat-source');
+
+      // If playing, restart with new source mode
+      if (isPlaying && engine) {
+        doStop();
+        setTimeout(() => startPlayback(), 150);
+      }
+    });
+  });
+
+  btnBoost?.addEventListener('click', () => {
+    if (!supportsStimulationBoost(selectedMood, selectedSource)) return;
+    stimulationBoost = !stimulationBoost;
+    if (stimulationBoost && selectedSource === 'music') {
+      setSourceMode('both');
+    } else {
+      syncBoostUi();
+    }
+
+    if (isPlaying && engine) {
+      doStop();
+      setTimeout(() => startPlayback(), 150);
+    }
+  });
+
+  // Default every fresh visit to blended music + auto-best soundscape.
+  localStorage.removeItem('argobeat-source');
+  setSourceMode(preferredSourceForMood(selectedMood));
+
+  window.addEventListener('argobeat-mood-select', ((e: CustomEvent) => {
+    selectedMood = e.detail.mood;
+    kimiRecapVisible = false;
+    resetSoundscapeToAuto();
+    setSourceMode(preferredSourceForMood(selectedMood));
+    if (suppressMoodRestart) {
+      suppressMoodRestart = false;
+      return;
+    }
+    sessionDurationOverrideMinutes = null;
+    if (isPlaying || isPaused) {
+      doStop();
+      // Brief delay then restart with new mood
+      setTimeout(() => startPlayback(), 150);
+    }
+    showKimiSuggestion(generateKimiPreflight());
+  }) as EventListener);
+
+  window.addEventListener('argobeat-volume-change', ((e: CustomEvent) => {
+    if (engine) {
+      engine.setVolume(e.detail.master);
+    }
+  }) as EventListener);
+
+  // ── Kimi AI Advisor ──────────────────────────────────────────────────────
+
+  const kimiStatus  = document.getElementById('kimi-status') as HTMLElement;
+  const kimiSuggestion = document.getElementById('kimi-suggestion') as HTMLElement;
+  const kimiReasons = document.getElementById('kimi-reasons') as HTMLElement;
+  const kimiActions = document.getElementById('kimi-actions') as HTMLElement;
+  const kimiApply   = document.getElementById('kimi-apply') as HTMLButtonElement;
+  const kimiDismiss = document.getElementById('kimi-dismiss') as HTMLButtonElement;
+  const kimiAskBtn  = document.getElementById('kimi-ask') as HTMLButtonElement;
+  const kimiSceneFocus = document.getElementById('kimi-scene-focus') as HTMLButtonElement | null;
+  const kimiSceneLoad = document.getElementById('kimi-scene-load') as HTMLButtonElement | null;
+  const kimiSceneRecover = document.getElementById('kimi-scene-recover') as HTMLButtonElement | null;
+  const kimiDemoToggle = document.getElementById('kimi-demo-toggle') as HTMLButtonElement | null;
+
+  type SourceMode = 'soundscape' | 'music' | 'both';
+  interface KimiScene {
+    key: string;
+    label: string;
+    mood: string;
+    source: SourceMode;
+    category?: string;
+    boost?: boolean;
+    durationMinutes: number;
+    statusCopy?: string;
+  }
+  interface AiAdvisorResult {
+    suggestion: string;
+    status?: string;
+    reasons?: string[];
+    action?:
+      | { type: 'soundscape'; category: string }
+      | { type: 'music' }
+      | { type: 'source'; source: SourceMode }
+      | { type: 'boost'; enabled: boolean }
+      | { type: 'scene'; scene: KimiScene };
+  }
+
+  const KIMI_SOUND_PREFERENCES: Record<string, string[]> = {
+    focus: ['stream', 'forest', 'rain', 'wind'],
+    deepWork: ['stream', 'rain', 'forest', 'space'],
+    relax: ['ocean', 'forest', 'stream', 'wind'],
+    meditate: ['gongs', 'space', 'forest'],
+    sleep: ['rain', 'wind', 'ocean', 'space'],
+  };
+  const KIMI_HIGH_RISK_CATEGORIES: Partial<Record<string, string[]>> = {
+    focus: ['space', 'gongs', 'cafe'],
+    deepWork: ['space', 'gongs', 'cafe'],
+    relax: ['cafe', 'thunder'],
+  };
+
+  function getSceneDuration(minutes: number): number {
+    return demoMinuteMode ? 1 : minutes;
+  }
+
+  function renderKimiReasons(reasons: string[] = []): void {
+    kimiReasons.innerHTML = '';
+    if (!reasons.length) {
+      kimiReasons.style.display = 'none';
+      return;
+    }
+
+    reasons.forEach((reason) => {
+      const chip = document.createElement('span');
+      chip.className = 'kimi-reason';
+      chip.textContent = reason;
+      kimiReasons.appendChild(chip);
+    });
+    kimiReasons.style.display = 'flex';
+  }
+
+  function syncMoodCardSelection(mood: string): void {
+    document.querySelectorAll<HTMLButtonElement>('.mood-card').forEach((card) => {
+      const active = card.dataset.mood === mood;
+      card.classList.toggle('active', active);
+      card.setAttribute('aria-checked', active ? 'true' : 'false');
+    });
+  }
+
+  function syncDemoToggleUi(): void {
+    if (!kimiDemoToggle) return;
+    kimiDemoToggle.textContent = demoMinuteMode ? 'Judge Speedrun: On' : 'Judge Speedrun: Off';
+    kimiDemoToggle.setAttribute('aria-pressed', demoMinuteMode ? 'true' : 'false');
+    kimiDemoToggle.classList.toggle('active', demoMinuteMode);
+  }
+
+  function createFocusSprintScene(): KimiScene {
+    return {
+      key: 'focus-sprint',
+      label: demoMinuteMode ? 'Run 1-Minute Judge Sprint' : 'Start Focus Sprint',
+      mood: 'focus',
+      source: 'both',
+      category: 'stream',
+      boost: true,
+      durationMinutes: getSceneDuration(25),
+      statusCopy: demoMinuteMode ? 'Launching a 1-minute judge sprint…' : 'Launching a 25-minute focus sprint…',
+    };
+  }
+
+  function createReduceLoadScene(): KimiScene {
+    return {
+      key: 'reduce-load',
+      label: 'Reduce Cognitive Load',
+      mood: 'focus',
+      source: 'both',
+      category: 'rain',
+      boost: false,
+      durationMinutes: getSceneDuration(25),
+      statusCopy: 'Softening the scene and lowering variance…',
+    };
+  }
+
+  function createRecoverFocusScene(): KimiScene {
+    return {
+      key: 'recover-focus',
+      label: 'Recover From Distraction',
+      mood: 'deepWork',
+      source: 'both',
+      category: 'forest',
+      boost: true,
+      durationMinutes: getSceneDuration(25),
+      statusCopy: 'Rebuilding a stronger deep-work scene…',
+    };
+  }
+
+  function createRelaxLandingScene(): KimiScene {
+    return {
+      key: 'relax-landing',
+      label: 'Switch to Relax Reset',
+      mood: 'relax',
+      source: 'both',
+      category: 'ocean',
+      boost: false,
+      durationMinutes: getSceneDuration(20),
+      statusCopy: 'Easing the room into a calmer landing…',
+    };
+  }
+
+  function buildSceneSuggestion(
+    scene: KimiScene,
+    status: string,
+    opening: string,
+    recommendation: string,
+    reasons: string[],
+    followup?: string,
+  ): AiAdvisorResult {
+    return {
+      status,
+      suggestion: composeKimiNote(opening, recommendation, followup),
+      reasons,
+      action: { type: 'scene', scene },
+    };
+  }
+
+  function generateKimiPreflight(): AiAdvisorResult {
+    if (selectedMood === 'relax') {
+      const scene = createRelaxLandingScene();
+      return buildSceneSuggestion(
+        scene,
+        demoMinuteMode ? 'Judge-ready reset path armed' : 'Kimi would start softer here',
+        `I'd open with a calmer ocean-backed reset instead of asking you to manage the controls yourself.`,
+        `One tap gives you a ${scene.durationMinutes}-minute relax scene with gentler ambience and no unnecessary intensity.`,
+        ['softer ambience', 'lower stimulation', 'clean recovery path'],
+        `If you need sharper focus after that, I can flip you straight into a deeper sprint.`
+      );
+    }
+
+    const scene = selectedMood === 'deepWork' ? createRecoverFocusScene() : createFocusSprintScene();
+    return buildSceneSuggestion(
+      scene,
+      demoMinuteMode ? 'Judge speedrun armed' : 'Kimi has a strong opening move',
+      scene.mood === 'deepWork'
+        ? `You do not need a generic playlist here. I'd start with a deeper work scene and let the system lock the room in for you.`
+        : `You look like you want traction, not setup friction. I'd start a focused sprint and let Kimi conduct the whole scene.`,
+      `One tap will set the mood, timer, ambience, queue behavior, and intensity so the session starts feeling intentional immediately.`,
+      scene.mood === 'deepWork'
+        ? ['denser instrumental queue', 'forest masking', 'higher focus intensity']
+        : ['steady instrumental queue', 'stream masking', 'one-tap orchestration'],
+      demoMinuteMode
+        ? `Judge Speedrun keeps the full story visible in one minute so judges actually see the lifecycle.`
+        : `If it feels too heavy once it starts, the next move is reducing cognitive load rather than fiddling with five controls.`
+    );
+  }
+
+  function getFeedbackSummary() {
+    const prefs = loadPrefs();
+    const ratings = Array.isArray(prefs.trackRatings) ? prefs.trackRatings : [];
+    const currentRatings = ratings.filter((entry: any) => entry.id === currentTrackId);
+    const trackUps = currentRatings.filter((entry: any) => entry.rating === 'up').length;
+    const trackDowns = currentRatings.filter((entry: any) => entry.rating === 'down').length;
+
+    return {
+      totalUps: prefs.feedbackCount?.thumbsUp ?? 0,
+      totalDowns: prefs.feedbackCount?.thumbsDown ?? 0,
+      trackUps,
+      trackDowns,
+    };
+  }
+
+  function pickPreferredSoundscape(mood: string, current: string): string {
+    const ranked = KIMI_SOUND_PREFERENCES[mood] ?? ['forest', 'stream', 'rain'];
+    return ranked.find((item) => item !== current) ?? ranked[0] ?? 'forest';
+  }
+
+  function isHighRiskCategoryForMood(mood: string, category: string | null): boolean {
+    if (!category) return false;
+    return (KIMI_HIGH_RISK_CATEGORIES[mood] ?? []).includes(category);
+  }
+
+  function isPairLikelyClashing(trackId: string | null, category: string | null, variation: string | null, mood: string): boolean {
+    if (!trackId || !category) return false;
+
+    if ((mood === 'focus' || mood === 'deepWork') && isHighRiskCategoryForMood(mood, category)) {
+      return true;
+    }
+
+    const pairRules = [
+      { track: /night-shift-current|deep-current-ii|late-session|code-noir|tunnel-vision/, category: 'space' },
+      { track: /night-shift-current|deep-current-ii|late-session|code-noir|tunnel-vision/, category: 'gongs' },
+      { track: /ember-circuit|ember-focus-ii|signal-clear|steady-state|morning-grid/, category: 'space' },
+      { track: /ember-circuit|ember-focus-ii|signal-clear|steady-state|morning-grid/, category: 'cafe' },
+      { track: /tidal-exhale|soft-landing|porch-light|golden-hour/, category: 'thunder' },
+    ];
+
+    if (pairRules.some((rule) => rule.category === category && rule.track.test(trackId))) {
+      return true;
+    }
+
+    if ((mood === 'focus' || mood === 'deepWork') && variation && /space-station-drone|sound-of-eternity|atmospheric-c|gong|bowl/i.test(variation)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function describeAction(action?: AiAdvisorResult['action']): string {
+    if (!action) return 'No cue';
+    switch (action.type) {
+      case 'soundscape':
+        return `Switch to ${action.category}`;
+      case 'music':
+        return 'Refresh track';
+      case 'source':
+        return action.source === 'music' ? 'Go music-first' : action.source === 'both' ? 'Blend both layers' : 'Go ambient-only';
+      case 'boost':
+        return action.enabled ? 'Engage intensity' : 'Ease intensity';
+      case 'scene':
+        return action.scene.label;
+      default:
+        return 'Apply';
+    }
+  }
+
+  function composeKimiNote(opening: string, recommendation: string, followup?: string): string {
+    return [opening, recommendation, followup].filter(Boolean).join('\n');
+  }
+
+  function actionKey(action?: AiAdvisorResult['action']): string {
+    if (!action) return 'none';
+    switch (action.type) {
+      case 'soundscape':
+        return `soundscape:${action.category}`;
+      case 'music':
+        return 'music:refresh';
+      case 'source':
+        return `source:${action.source}`;
+      case 'boost':
+        return `boost:${action.enabled ? 'on' : 'off'}`;
+      case 'scene':
+        return `scene:${action.scene.key}:${action.scene.durationMinutes}`;
+      default:
+        return 'other';
+    }
+  }
+
+  function generateKimiSuggestion(): AiAdvisorResult {
+    const state = engine?.getState();
+    if (!state || (!isPlaying && !isPaused)) {
+      return generateKimiPreflight();
+    }
+
+    const elapsedSeconds = state.elapsedSeconds ?? 0;
+    const sessionSeconds = state.sessionSeconds || (demoMinuteMode ? 60 : 25 * 60);
+    const progress = sessionSeconds > 0 ? elapsedSeconds / sessionSeconds : 0;
+    const sourceMode = state?.audioSource ?? selectedSource;
+    const moodLabel = MOOD_LABELS[selectedMood] || 'Session';
+    const liveCategory = state?.soundscapeCategory ?? (selectedSoundscape === 'auto' ? null : selectedSoundscape);
+    const liveVariation = state?.currentVariation ?? null;
+    const soundLabel = formatSoundscapeName(liveCategory, liveVariation) || (selectedSoundscape === 'auto' ? 'auto ambience' : selectedSoundscape);
+    const trackLabel = formatTrackName(currentTrackId);
+    const feedback = getFeedbackSummary();
+    const nextSoundscape = pickPreferredSoundscape(selectedMood, liveCategory ?? '');
+
+    if (sourceMode === 'both' && isPairLikelyClashing(currentTrackId, liveCategory, liveVariation, selectedMood)) {
+      return {
+        status: 'This mix is fighting itself',
+        suggestion: composeKimiNote(
+          `${trackLabel || moodLabel} and ${soundLabel} are pulling in different directions.`,
+          `I'd keep the track and swap the background to ${nextSoundscape} so the session feels cleaner and easier to stay with.`,
+          `If that still feels off, the next move is refreshing the track rather than changing everything at once.`
+        ),
+        reasons: ['conflicting texture', 'too much attentional pull', 'cleaner background helps focus'],
+        action: { type: 'soundscape', category: nextSoundscape },
+      };
+    }
+
+    if (feedback.trackDowns > feedback.trackUps) {
+      return {
+        status: 'This track is not landing',
+        suggestion: composeKimiNote(
+          `This one does not seem to be helping anymore.`,
+          `I'd refresh the track first and leave the rest of the scene alone for a minute.`,
+          `If the next track still misses, then we can move the ambience too.`
+        ),
+        reasons: ['negative feedback', 'preserve the scene', 'fastest correction'],
+        action: { type: 'music' },
+      };
+    }
+
+    if ((selectedMood === 'focus' || selectedMood === 'deepWork') && sourceMode !== 'both') {
+      return {
+        status: 'You would probably get a better blend here',
+        suggestion: composeKimiNote(
+          `${moodLabel} usually works better when the music has a little atmosphere behind it.`,
+          `I'd bring both layers back in so the track can lead while the ambience smooths it out.`,
+          `Once that settles, then decide if you want more intensity.`
+        ),
+        reasons: ['music needs masking', 'better blend', 'more intentional scene'],
+        action: { type: 'source', source: 'both' },
+      };
+    }
+
+    if ((selectedMood === 'focus' || selectedMood === 'deepWork') && progress >= 0.28 && !stimulationBoost && sourceMode !== 'soundscape') {
+      return {
+        status: 'You have some momentum now',
+        suggestion: composeKimiNote(
+          `This feels stable enough to tighten up a little.`,
+          `If you want, I can turn on Intensity mix to make the session feel a bit more locked in.`,
+          `If it starts to feel too compressed, we can back it off again.`
+        ),
+        reasons: ['momentum detected', 'stable scene', 'small intensity bump'],
+        action: { type: 'boost', enabled: true },
+      };
+    }
+
+    if (selectedMood === 'relax' && stimulationBoost) {
+      return {
+        status: 'This feels a little too keyed up',
+        suggestion: composeKimiNote(
+          `For relax mode, I would soften this back down.`,
+          `Let me ease Intensity mix so the music can breathe more naturally.`,
+          `If it still feels tense after that, we can warm up the ambience next.`
+        ),
+        reasons: ['relax should breathe', 'too keyed up', 'less pressure on the mix'],
+        action: { type: 'boost', enabled: false },
+      };
+    }
+
+    if (selectedMood === 'relax' && selectedSoundscape !== 'ocean' && progress >= 0.2) {
+      return {
+        status: 'This could feel softer',
+        suggestion: composeKimiNote(
+          `The track is holding well, but the background could be calmer.`,
+          `I'd move this toward ocean so the whole session opens up and feels less busy.`,
+          `If that gets too sleepy, we can bring a little texture back later.`
+        ),
+        reasons: ['calmer ambience', 'more spacious bed', 'less busy background'],
+        action: { type: 'soundscape', category: 'ocean' },
+      };
+    }
+
+    if ((selectedMood === 'focus' || selectedMood === 'deepWork') && selectedSoundscape === 'auto' && progress >= 0.18) {
+      return {
+        status: 'This is working, but it could be more dialed in',
+        suggestion: composeKimiNote(
+          `The session feels decent, but the background still feels a little generic.`,
+          `I'd lock the ambience to ${nextSoundscape} so the whole thing feels more intentional.`,
+          `If focus drops after that, the next step is refreshing the track.`
+        ),
+        reasons: ['generic ambience', 'clearer scene identity', 'better masking'],
+        action: { type: 'soundscape', category: nextSoundscape },
+      };
+    }
+
+    if ((selectedMood === 'focus' || selectedMood === 'deepWork') && progress >= 0.72 && liveCategory && liveCategory !== 'rain') {
+      return {
+        status: 'Protect the landing',
+        suggestion: composeKimiNote(
+          `You are close to the finish, so I would make the last stretch slightly more frictionless.`,
+          `Rain tends to reduce variance at the end of a sprint and helps you finish instead of fiddling.`,
+          `If you want, I'll simplify the background without touching the track.`
+        ),
+        reasons: ['end-of-sprint smoothing', 'lower variance', 'keep the track stable'],
+        action: { type: 'soundscape', category: 'rain' },
+      };
+    }
+
+    if (feedback.totalUps >= 3 && sourceMode === 'both') {
+      return {
+        status: 'You seem to like this kind of mix',
+        suggestion: composeKimiNote(
+          `You seem to respond well to this layered style for ${moodLabel.toLowerCase()}.`,
+          `I would leave this alone for now and only step in if the track starts to flatten out.`,
+          `No need to fix what is already working.`
+        ),
+        reasons: ['positive feedback', 'good layer fit', 'no intervention needed'],
+      };
+    }
+
+    return {
+      status: 'This feels steady',
+      suggestion: composeKimiNote(
+        `This mix is holding together pretty well right now.`,
+        `I'd leave it alone for the moment instead of tweaking three things at once.`,
+        `If it starts to drift, the first move is either a fresher track or a cleaner background, not both.`
+      ),
+      reasons: ['stable energy', 'clean enough mix', 'avoid unnecessary change'],
+    };
+  }
+
+  function generateKimiRecap(): AiAdvisorResult {
+    const state = engine?.getState();
+    const moodName = MOOD_LABELS[selectedMood] || selectedMood;
+    const trackName = formatTrackName(currentTrackId) || 'the current queue';
+    const soundscapeName = formatSoundscapeName(
+      state?.soundscapeCategory ?? null,
+      state?.currentVariation ?? null,
+    ) || (selectedSoundscape === 'auto' ? 'auto ambience' : selectedSoundscape);
+    const nextScene = selectedMood === 'relax' ? createFocusSprintScene() : createRelaxLandingScene();
+
+    return buildSceneSuggestion(
+      nextScene,
+      demoMinuteMode ? 'Judge sprint complete' : 'Session complete',
+      `You completed the ${moodName.toLowerCase()} session with ${trackName} over ${soundscapeName}.`,
+      selectedMood === 'relax'
+        ? `If you want to go back into work, I can launch a sharper sprint next.`
+        : `If you want to recover cleanly, I can switch you into a calmer landing scene next.`,
+      [
+        demoMinuteMode ? 'full lifecycle shown' : 'session completed',
+        `mood: ${moodName.toLowerCase()}`,
+        selectedMood === 'relax' ? 'ready for work' : 'ready for reset',
+      ],
+      `This is the moment judges should feel that Kimi is directing the whole session, not just commenting on it.`
+    );
+  }
+
+  async function applyKimiScene(scene: KimiScene): Promise<void> {
+    kimiRecapVisible = false;
+    sessionDurationOverrideMinutes = scene.durationMinutes;
+    suppressMoodRestart = true;
+    syncMoodCardSelection(scene.mood);
+    window.dispatchEvent(
+      new CustomEvent('argobeat-mood-select', {
+        detail: { mood: scene.mood },
+      })
+    );
+
+    selectedMood = scene.mood;
+    selectedSoundscape = scene.category && VALID_CATEGORIES.has(scene.category) ? scene.category : 'auto';
+    soundscapeSelect.value = selectedSoundscape;
+    setSourceMode(scene.source);
+    stimulationBoost = Boolean(scene.boost);
+    syncBoostUi();
+
+    kimiStatus.textContent = scene.statusCopy ?? `Applied — ${scene.label.toLowerCase()}`;
+    kimiActions.style.display = 'none';
+    pendingAction = undefined;
+
+    if ((isPlaying || isPaused) && engine) {
+      doStop();
+      setTimeout(() => startPlayback(), 150);
+    } else {
+      await startPlayback();
+    }
+  }
+
+  let kimiTimer: number | null = null;
+  let pendingAction: AiAdvisorResult['action'] | undefined;
+  let kimiThinking = false;
+  let kimiLiveSessionActive = false;
+  let kimiRecapVisible = false;
+
+  function showKimiSuggestion(result: AiAdvisorResult) {
+    const nextActionKey = actionKey(result.action);
+    if (result.action && nextActionKey === lastKimiCueKey) {
+      result = {
+        ...result,
+        action: undefined,
+        suggestion: composeKimiNote(
+          `I still like the same direction here.`,
+          `Give the last change a little more time before I nudge this again.`,
+          `If it still feels off in another minute, ask me again and I'll make the next move.`
+        ),
+        reasons: ['avoid over-steering', 'let the last change settle'],
+      };
+    }
+    kimiSuggestion.textContent = result.suggestion;
+    renderKimiReasons(result.reasons ?? []);
+    pendingAction = result.action;
+    kimiStatus.textContent = result.status ?? (result.action ? 'Suggestion ready' : 'Watching your session…');
+    kimiActions.style.display = result.action ? 'flex' : 'none';
+    if (kimiApply) kimiApply.textContent = describeAction(result.action);
+    kimiAskBtn.disabled = false;
+    kimiThinking = false;
+  }
+
+  function kimiThink() {
+    if (kimiThinking) return;
+    kimiThinking = true;
+    kimiStatus.textContent = 'Reading the session…';
+    kimiSuggestion.textContent = '';
+    kimiActions.style.display = 'none';
+    kimiAskBtn.disabled = true;
+    if (kimiTimer) { clearTimeout(kimiTimer); kimiTimer = null; }
+
+    window.setTimeout(() => {
+      if (!isPlaying) {
+        kimiThinking = false;
+        return;
+      }
+      showKimiSuggestion(generateKimiSuggestion());
+      kimiTimer = window.setTimeout(kimiThink, demoMinuteMode ? 18 * 1000 : 75 * 1000);
+    }, 700);
+  }
+
+  function startKimiAdvisor() {
+    kimiRecapVisible = false;
+    kimiLiveSessionActive = true;
+    kimiStatus.textContent = 'Watching your session…';
+    kimiSuggestion.textContent = '';
+    lastKimiCueKey = null;
+    if (kimiApply) kimiApply.textContent = 'Apply cue';
+    kimiAskBtn.disabled = false;
+    kimiThinking = false;
+    if (kimiTimer) clearTimeout(kimiTimer);
+    showKimiSuggestion(generateKimiSuggestion());
+    kimiTimer = window.setTimeout(kimiThink, demoMinuteMode ? 4 * 1000 : 12 * 1000);
+  }
+
+  function stopKimiAdvisor() {
+    if (kimiTimer) { clearTimeout(kimiTimer); kimiTimer = null; }
+    kimiThinking = false;
+    kimiLiveSessionActive = false;
+    lastKimiCueKey = null;
+    if (kimiRecapVisible) return;
+    showKimiSuggestion(generateKimiPreflight());
+  }
+
+  // Fix 1: manual "Ask now" button
+  kimiAskBtn?.addEventListener('click', () => {
+    if (!isPlaying) {
+      showKimiSuggestion(generateKimiPreflight());
+      return;
+    }
+    if (!kimiThinking) kimiThink();
+  });
+
+  // Fix 3: Apply handles both soundscape switch AND music skip
+  kimiApply?.addEventListener('click', async () => {
+    if (!pendingAction) { kimiActions.style.display = 'none'; return; }
+
+    if (pendingAction.type === 'scene') {
+      lastKimiCueKey = actionKey(pendingAction);
+      await applyKimiScene(pendingAction.scene);
+    } else if (pendingAction.type === 'soundscape' && VALID_CATEGORIES.has(pendingAction.category)) {
+      lastKimiCueKey = actionKey(pendingAction);
+      selectedSoundscape = pendingAction.category;
+      soundscapeSelect.value = pendingAction.category;
+      kimiStatus.textContent = `Applied — switched to ${pendingAction.category}`;
+      kimiActions.style.display = 'none';
+      pendingAction = undefined;
+      if (isPlaying && engine) { doStop(); setTimeout(() => startPlayback(), 150); }
+    } else if (pendingAction.type === 'music' && engine && isPlaying) {
+      lastKimiCueKey = actionKey(pendingAction);
+      kimiStatus.textContent = 'Skipping to next track…';
+      kimiActions.style.display = 'none';
+      pendingAction = undefined;
+      await engine.skipMusic();
+    } else if (pendingAction.type === 'source') {
+      lastKimiCueKey = actionKey(pendingAction);
+      setSourceMode(pendingAction.source);
+      kimiStatus.textContent = pendingAction.source === 'both'
+        ? 'Applied — blended both layers'
+        : pendingAction.source === 'music'
+          ? 'Applied — music-first mode'
+          : 'Applied — ambient-only mode';
+      kimiActions.style.display = 'none';
+      pendingAction = undefined;
+      if (isPlaying && engine) { doStop(); setTimeout(() => startPlayback(), 150); }
+    } else if (pendingAction.type === 'boost') {
+      lastKimiCueKey = actionKey(pendingAction);
+      stimulationBoost = pendingAction.enabled;
+      syncBoostUi();
+      kimiStatus.textContent = pendingAction.enabled ? 'Applied — intensity engaged' : 'Applied — intensity eased';
+      kimiActions.style.display = 'none';
+      pendingAction = undefined;
+      if (isPlaying && engine) { doStop(); setTimeout(() => startPlayback(), 150); }
+    } else {
+      kimiStatus.textContent = 'Applied ✓';
+      kimiActions.style.display = 'none';
+      pendingAction = undefined;
+    }
+  });
+
+  kimiDismiss?.addEventListener('click', () => {
+    showKimiSuggestion(isPlaying ? generateKimiSuggestion() : generateKimiPreflight());
+    if (kimiApply) kimiApply.textContent = 'Apply cue';
+    pendingAction = undefined;
+  });
+
+  kimiSceneFocus?.addEventListener('click', async () => {
+    lastKimiCueKey = 'scene:focus-sprint';
+    await applyKimiScene(createFocusSprintScene());
+  });
+
+  kimiSceneLoad?.addEventListener('click', async () => {
+    lastKimiCueKey = 'scene:reduce-load';
+    await applyKimiScene(createReduceLoadScene());
+  });
+
+  kimiSceneRecover?.addEventListener('click', async () => {
+    lastKimiCueKey = 'scene:recover-focus';
+    await applyKimiScene(createRecoverFocusScene());
+  });
+
+  kimiDemoToggle?.addEventListener('click', () => {
+    demoMinuteMode = !demoMinuteMode;
+    syncDemoToggleUi();
+    if (!isPlaying) {
+      showKimiSuggestion(generateKimiPreflight());
+    }
+  });
+
+  // Wire Kimi to engine play/stop state
+  window.addEventListener('argobeat-state-change', ((e: CustomEvent) => {
+    if (e.detail.isPlaying && !e.detail.isPaused) {
+      if (!kimiLiveSessionActive) startKimiAdvisor();
+    } else if (!e.detail.isPlaying && !e.detail.isPaused) {
+      stopKimiAdvisor();
+    }
+  }) as EventListener);
+
+  syncDemoToggleUi();
+  showKimiSuggestion(generateKimiPreflight());
+</script>
+
+<style>
+  .player-shell {
+    background: var(--color-bg-glass);
+    backdrop-filter: blur(var(--blur-glass));
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 720px;
+    width: 92vw;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .player-section {
+    margin-bottom: 24px;
+  }
+
+  .player-section:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Source Toggle + Soundscape Picker */
+  .source-row {
+    display: grid;
+    grid-template-columns: auto minmax(320px, 1.4fr) minmax(220px, 1fr);
+    align-items: start;
+    gap: 16px;
+  }
+
+  .boost-panel {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .boost-chip {
+    align-self: flex-start;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .boost-chip.active {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(129, 140, 248, 0.7);
+    box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.18);
+  }
+
+  .boost-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .boost-helper {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+    max-width: 280px;
+  }
+
+  .source-toggle {
+    display: flex;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .source-tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--color-text-secondary);
+    transition: all 0.2s;
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .source-tab.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-primary);
+  }
+
+  .source-tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-text-primary);
+  }
+
+  .source-tab:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .source-tab:disabled:hover {
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+
+  .soundscape-picker {
+    min-width: 0;
+  }
+
+  .soundscape-picker select {
+    width: 100%;
+    min-height: 44px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    color-scheme: dark;
+  }
+
+  .soundscape-picker select:focus {
+    border-color: var(--color-accent);
+    outline: none;
+  }
+
+  [data-theme='light'] .soundscape-picker select {
+    color-scheme: light;
+  }
+
+  .soundscape-picker option {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+  }
+
+  .soundscape-picker option:checked {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  .soundscape-helper {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+    max-width: 40ch;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Transport Controls */
+  .controls-section {
+    text-align: center;
+  }
+
+  .diagnostics-section {
+    margin-top: 4px;
+  }
+
+  .transport-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .transport-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: white;
+  }
+
+  .transport-btn svg {
+    flex: 0 0 auto;
+  }
+
+  .transport-btn:hover:not(:disabled) {
+    transform: scale(1.08);
+  }
+
+  .transport-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  .transport-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .transport-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  .play-btn {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    box-shadow: 0 4px 20px var(--color-accent-glow);
+  }
+
+  .play-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 28px var(--color-accent-glow);
+  }
+
+  .play-btn.active-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 4px 20px var(--color-accent-glow);
+    }
+    50% {
+      box-shadow: 0 4px 32px var(--color-accent-glow), 0 0 48px rgba(99, 102, 241, 0.15);
+    }
+  }
+
+  .pause-btn,
+  .stop-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .pause-btn:hover:not(:disabled),
+  .stop-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .skip-btn {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+
+  .skip-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .skip-btn-label {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .status-line {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.01em;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .player-shell {
+      padding: 20px 16px;
+      width: 96vw;
+      border-radius: 16px;
+    }
+
+    .player-section {
+      margin-bottom: 20px;
+    }
+
+    .source-row {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .source-toggle {
+      align-self: flex-start;
+    }
+
+    .soundscape-helper,
+    .boost-helper {
+      max-width: none;
+    }
+
+    .play-btn {
+      width: 56px;
+      height: 56px;
+    }
+
+    .pause-btn,
+    .stop-btn {
+      width: 40px;
+      height: 40px;
+    }
+
+    .skip-btn {
+      min-height: 40px;
+      padding: 0 14px;
+    }
+
+    .skip-btn-label {
+      font-size: 12px;
+    }
+
+    .transport-controls {
+      gap: 12px;
+    }
+  }
+
+  /* Feedback bar (thumbs up/down) */
+  .feedback-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+  }
+
+  .thumbs-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0.4rem 0.65rem;
+    cursor: pointer;
+    font-size: 1.15rem;
+    transition: all 0.2s ease;
+    opacity: 0.65;
+  }
+
+  .thumbs-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    opacity: 1;
+  }
+
+  .thumbs-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .thumbs-btn.rated {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+  .thumbs-up.rated {
+    border-color: #4ade80;
+  }
+
+  .thumbs-down.rated {
+    border-color: #f87171;
+  }
+
+  .learning-progress {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.8rem;
+  }
+
+  /* Kimi Advisor */
+  .kimi-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.06) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .kimi-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .kimi-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .kimi-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  .kimi-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: 0.01em;
+  }
+
+  .kimi-status {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    flex: 1;
+  }
+
+  .kimi-ask-btn {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    background: rgba(139, 92, 246, 0.1);
+    color: #c4b5fd;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .kimi-ask-btn:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(167, 139, 250, 0.5);
+  }
+
+  .kimi-ask-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .kimi-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .kimi-scene-btn {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .kimi-scene-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .kimi-scene-primary {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(168, 85, 247, 0.18));
+    border-color: rgba(167, 139, 250, 0.45);
+    color: #f5f3ff;
+  }
+
+  .kimi-scene-toggle.active {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(52, 211, 153, 0.4);
+    color: #d1fae5;
+  }
+
+  .kimi-suggestion {
+    font-size: 13px;
+    color: var(--color-text-primary);
+    line-height: 1.5;
+    min-height: 1.5em;
+    white-space: pre-line;
+  }
+
+  .kimi-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .kimi-reason {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.78);
+    white-space: nowrap;
+  }
+
+  .kimi-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .kimi-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .kimi-apply {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #c4b5fd;
+  }
+
+  .kimi-apply:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(167, 139, 250, 0.6);
+  }
+
+  .kimi-dismiss {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+  }
+
+  .kimi-dismiss:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-text-primary);
+  }
+</style>

@@ -1,0 +1,104 @@
+---
+export interface Props {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  id?: string;
+  type?: 'button' | 'submit' | 'reset';
+  class?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  id,
+  type = 'button',
+  class: className = '',
+} = Astro.props;
+---
+
+<button
+  class:list={['btn', `btn-${variant}`, `btn-${size}`, className]}
+  disabled={disabled}
+  id={id}
+  type={type}
+>
+  <slot />
+</button>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Variants */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    color: white;
+    box-shadow: 0 4px 14px var(--color-accent-glow);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px var(--color-accent-glow);
+  }
+
+  .btn-secondary {
+    background: var(--color-bg-glass);
+    backdrop-filter: blur(8px);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-glass);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-accent);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--color-accent);
+    background: var(--color-accent-glow);
+  }
+
+  /* Sizes */
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .btn-md {
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+
+  .btn-lg {
+    padding: 16px 32px;
+    font-size: 17px;
+  }
+</style>

@@ -1,0 +1,35 @@
+# Audio assets — too large for git, served from CDN or local dev setup
+# See README.md "Audio Assets" section for setup instructions.
+audio-raw/
+apps/web/public/audio/music/
+apps/web/public/audio/soundscapes/
+apps/web/public/audio/soundscapes-library/
+
+# Instrument samples are small (~1.5MB) and deploy with the app
+!apps/web/public/audio/samples/
+!apps/web/public/audio/samples/*.mp3
+
+# Build output
+dist/
+.astro/
+
+# Dependencies
+node_modules/
+.venv/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Local dev artifacts
+scratch/
+__pycache__/
+*.pyc
+.codex
+
+# Cache
+tools/ai-music-lab/cache/
+
+# OS
+.DS_Store

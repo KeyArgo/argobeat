@@ -1,0 +1,149 @@
+---
+/**
+ * SessionTimer — circular SVG progress ring with elapsed time display.
+ *
+ * Listens for `argobeat-tick` events dispatched by the ArgoBeatPlayer
+ * to update the progress ring and time readout each second.
+ *
+ * The progress ring gradient color-matches the active mood, updating
+ * dynamically when the user switches moods.
+ */
+---
+
+<div class="timer-container">
+  <svg class="timer-ring" viewBox="0 0 200 200" aria-hidden="true">
+    <defs>
+      <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop id="gradient-stop-1" offset="0%" stop-color="#3b82f6" />
+        <stop id="gradient-stop-2" offset="100%" stop-color="#1d4ed8" />
+      </linearGradient>
+    </defs>
+    <circle cx="100" cy="100" r="90" class="ring-bg" />
+    <circle cx="100" cy="100" r="90" class="ring-progress" id="ring-progress" />
+  </svg>
+  <div class="timer-text">
+    <div class="time-display" id="time-display" aria-live="polite" aria-atomic="true">
+      00:00
+    </div>
+    <div class="time-label" id="time-label">Ready</div>
+  </div>
+</div>
+
+<script>
+  const ringProgress = document.getElementById('ring-progress') as SVGCircleElement;
+  const timeDisplay = document.getElementById('time-display')!;
+  const timeLabel = document.getElementById('time-label')!;
+  const gradStop1 = document.getElementById('gradient-stop-1') as SVGStopElement;
+  const gradStop2 = document.getElementById('gradient-stop-2') as SVGStopElement;
+  const circumference = 2 * Math.PI * 90;
+
+  ringProgress.style.strokeDasharray = String(circumference);
+  ringProgress.style.strokeDashoffset = String(circumference);
+
+  // Mood color mapping for gradient updates
+  const MOOD_GRADIENTS: Record<string, [string, string]> = {
+    focus:    ['#3b82f6', '#1d4ed8'],
+    deepWork: ['#6366f1', '#4338ca'],
+    relax:    ['#10b981', '#059669'],
+    meditate: ['#a855f7', '#7e22ce'],
+    sleep:    ['#475569', '#1e293b'],
+  };
+
+  function formatTime(totalSeconds: number): string {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function updateGradient(mood: string) {
+    const colors = MOOD_GRADIENTS[mood];
+    if (colors) {
+      gradStop1.setAttribute('stop-color', colors[0]);
+      gradStop2.setAttribute('stop-color', colors[1]);
+    }
+  }
+
+  window.addEventListener('argobeat-tick', ((e: CustomEvent) => {
+    const elapsed: number = e.detail.elapsedSeconds;
+    const total: number = e.detail.sessionSeconds || elapsed + 1;
+    const progress = Math.min(elapsed / total, 1);
+    const offset = circumference * (1 - progress);
+
+    ringProgress.style.strokeDashoffset = String(offset);
+    timeDisplay.textContent = formatTime(elapsed);
+    timeLabel.textContent = `/ ${formatTime(total)}`;
+  }) as EventListener);
+
+  window.addEventListener('argobeat-state-change', ((e: CustomEvent) => {
+    if (!e.detail.isPlaying && !e.detail.isPaused) {
+      // Stopped — reset
+      ringProgress.style.strokeDashoffset = String(circumference);
+      timeDisplay.textContent = '00:00';
+      timeLabel.textContent = 'Ready';
+    } else if (e.detail.isPaused) {
+      timeLabel.textContent = 'Paused';
+    }
+
+    // Update gradient color for the active mood
+    if (e.detail.mood) {
+      updateGradient(e.detail.mood);
+    }
+  }) as EventListener);
+
+  // Also listen for mood selection before play starts
+  window.addEventListener('argobeat-mood-select', ((e: CustomEvent) => {
+    updateGradient(e.detail.mood);
+  }) as EventListener);
+</script>
+
+<style>
+  .timer-container {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    margin: 0 auto;
+  }
+
+  .timer-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.04);
+    stroke-width: 5;
+  }
+
+  .ring-progress {
+    fill: none;
+    stroke: url(#progress-gradient);
+    stroke-width: 5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+  }
+
+  .timer-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .time-display {
+    font-size: 26px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+    letter-spacing: 0.02em;
+  }
+
+  .time-label {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+  }
+</style>

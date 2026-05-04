@@ -1,0 +1,262 @@
+---
+/**
+ * WaveVisualizer — canvas-based FFT frequency visualizer.
+ *
+ * Listens for the engine's AnalyserNode via custom event and renders
+ * a smoothed frequency-bar display using requestAnimationFrame.
+ * Falls back to a gentle idle animation when no audio is playing.
+ *
+ * Color-matches the active mood: bars, glow, and idle animation all
+ * shift hue when the user selects a different mood.
+ */
+---
+
+<div class="visualizer-container">
+  <canvas id="visualizer-canvas" aria-label="Audio frequency visualization" role="img"></canvas>
+</div>
+
+<script>
+  import { LiveScoreTracker } from '../../lib/live-score';
+  import type { LiveScoreAudioSource, LiveScoreEntrainmentMethod } from '../../lib/live-score';
+
+  const canvas = document.getElementById('visualizer-canvas') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  let analyser: AnalyserNode | null = null;
+  let animationId: number | null = null;
+  let isPlaying = false;
+  let activeMood = 'focus';
+  let targetHz: number | null = null;
+  let scoreTracker: LiveScoreTracker | null = null;
+  let lastScoreDispatchAt = 0;
+  let playbackContext: {
+    audioSource: LiveScoreAudioSource;
+    soundscapeCategory: string | null;
+    currentVariation: string | null;
+    currentMusicTrack: string | null;
+    entrainmentMethod: LiveScoreEntrainmentMethod;
+  } = {
+    audioSource: 'both',
+    soundscapeCategory: null,
+    currentVariation: null,
+    currentMusicTrack: null,
+    entrainmentMethod: 'invisible',
+  };
+
+  // Mood color mapping (hue ranges for HSL-based rendering)
+  interface MoodColor {
+    hue: number;
+    saturation: number;
+    primaryHex: string;
+  }
+
+  const MOOD_COLORS: Record<string, MoodColor> = {
+    focus:    { hue: 217, saturation: 91, primaryHex: '#3b82f6' },
+    deepWork: { hue: 239, saturation: 84, primaryHex: '#6366f1' },
+    relax:    { hue: 160, saturation: 84, primaryHex: '#10b981' },
+    meditate: { hue: 271, saturation: 91, primaryHex: '#a855f7' },
+    sleep:    { hue: 215, saturation: 16, primaryHex: '#475569' },
+  };
+
+  let activeMoodColor: MoodColor = MOOD_COLORS.focus;
+
+  function syncScoreTracker(): void {
+    if (!analyser) return;
+    if (!scoreTracker) {
+      scoreTracker = new LiveScoreTracker(analyser, activeMood as any, targetHz);
+      scoreTracker.setPlaybackContext(playbackContext);
+      return;
+    }
+
+    scoreTracker.setAnalyser(analyser);
+    scoreTracker.setMood(activeMood as any, targetHz);
+    scoreTracker.setPlaybackContext(playbackContext);
+  }
+
+  function dispatchScore(snapshot: unknown): void {
+    window.dispatchEvent(new CustomEvent('argobeat-score-update', { detail: snapshot }));
+  }
+
+  // Size canvas to container
+  function resizeCanvas() {
+    const rect = canvas.parentElement!.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Receive analyser from engine
+  window.addEventListener('argobeat-engine-ready', ((e: CustomEvent) => {
+    analyser = e.detail.analyser;
+    syncScoreTracker();
+  }) as EventListener);
+
+  // Track play state and mood changes
+  window.addEventListener('argobeat-state-change', ((e: CustomEvent) => {
+    isPlaying = e.detail.isPlaying;
+    activeMood = e.detail.mood ?? activeMood;
+    targetHz = typeof e.detail.targetHz === 'number' ? e.detail.targetHz : null;
+    playbackContext = {
+      audioSource: e.detail.audioSource ?? playbackContext.audioSource,
+      soundscapeCategory: e.detail.soundscapeCategory ?? null,
+      currentVariation: e.detail.currentVariation ?? null,
+      currentMusicTrack: e.detail.currentMusicTrack ?? null,
+      entrainmentMethod: e.detail.entrainmentMethod ?? playbackContext.entrainmentMethod,
+    };
+    if (MOOD_COLORS[activeMood]) {
+      activeMoodColor = MOOD_COLORS[activeMood];
+    }
+    if (scoreTracker) {
+      scoreTracker.setMood(activeMood as any, targetHz);
+      scoreTracker.setPlaybackContext(playbackContext);
+      if (!isPlaying) {
+        scoreTracker.reset();
+      }
+    }
+  }) as EventListener);
+
+  // Also listen for mood selection (before play starts)
+  window.addEventListener('argobeat-mood-select', ((e: CustomEvent) => {
+    const mood = e.detail.mood;
+    if (MOOD_COLORS[mood]) {
+      activeMood = mood;
+      activeMoodColor = MOOD_COLORS[mood];
+      scoreTracker?.setMood(activeMood as any, targetHz);
+    }
+  }) as EventListener);
+
+  // Idle animation — gentle sine wave when not playing
+  let idlePhase = 0;
+
+  function drawIdle(w: number, h: number) {
+    idlePhase += 0.012;
+    const mc = activeMoodColor;
+
+    // Draw multiple layered waves
+    for (let layer = 0; layer < 3; layer++) {
+      const alpha = 0.15 - layer * 0.04;
+      const amplitude = 10 - layer * 2;
+      const speed = 1 - layer * 0.15;
+
+      ctx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const progress = x / w;
+        const y =
+          h / 2 +
+          Math.sin(progress * Math.PI * 4 + idlePhase * speed) * amplitude +
+          Math.sin(progress * Math.PI * 2 + idlePhase * 0.7 * speed) * (amplitude * 0.5);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `hsla(${mc.hue}, ${mc.saturation}%, 60%, ${alpha})`;
+      ctx.lineWidth = 2 - layer * 0.5;
+      ctx.stroke();
+    }
+  }
+
+  function draw() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+
+    // Fade previous frame
+    ctx.fillStyle = 'rgba(10, 13, 20, 0.18)';
+    ctx.fillRect(0, 0, w, h);
+
+    if (!analyser || !isPlaying) {
+      drawIdle(w, h);
+      animationId = requestAnimationFrame(draw);
+      return;
+    }
+
+    syncScoreTracker();
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+
+    const mc = activeMoodColor;
+    const usableBins = Math.min(bufferLength, 128);
+    const barWidth = w / usableBins;
+    const gap = 1;
+
+    for (let i = 0; i < usableBins; i++) {
+      const value = dataArray[i] / 255;
+      const barHeight = value * h * 0.85;
+
+      // Shift hue slightly across the spectrum based on mood
+      const hueShift = (i / usableBins) * 30;
+      const hue = mc.hue + hueShift;
+      const lightness = 40 + value * 25;
+      const alpha = 0.35 + value * 0.65;
+
+      const x = i * barWidth;
+      const effectiveWidth = barWidth - gap;
+      const radius = Math.min(effectiveWidth * 0.4, 3);
+
+      // Glow effect on peaks
+      if (value > 0.7) {
+        ctx.shadowColor = `hsla(${hue}, ${mc.saturation}%, 60%, ${(value - 0.7) * 2})`;
+        ctx.shadowBlur = 8 + value * 8;
+      } else {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.fillStyle = `hsla(${hue}, ${mc.saturation}%, ${lightness}%, ${alpha})`;
+
+      // Rounded top bars
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      ctx.lineTo(x, h - barHeight + radius);
+      ctx.quadraticCurveTo(x, h - barHeight, x + radius, h - barHeight);
+      ctx.lineTo(x + effectiveWidth - radius, h - barHeight);
+      ctx.quadraticCurveTo(
+        x + effectiveWidth,
+        h - barHeight,
+        x + effectiveWidth,
+        h - barHeight + radius
+      );
+      ctx.lineTo(x + effectiveWidth, h);
+      ctx.fill();
+    }
+
+    const now = performance.now();
+    const snapshot = scoreTracker?.sample(now) ?? null;
+    if (snapshot && now - lastScoreDispatchAt >= 240) {
+      dispatchScore(snapshot);
+      lastScoreDispatchAt = now;
+    }
+
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    animationId = requestAnimationFrame(draw);
+  }
+
+  // Start animation loop
+  draw();
+</script>
+
+<style>
+  .visualizer-container {
+    width: 100%;
+    height: 120px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: rgba(10, 13, 20, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
