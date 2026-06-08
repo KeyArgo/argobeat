@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArgoBeat Recipe",
+  "description": "Machine-readable recipe for reproducing an ArgoBeat track",
+  "type": "object",
+  "required": ["recipe_id", "category", "created", "source", "generation", "post_processing", "output"],
+  "properties": {
+    "recipe_id": {
+      "type": "string",
+      "description": "Unique ID: {category}-{instrument}-{bpm}-seed{N}"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["focus", "deep-work", "relax", "meditate", "sleep"],
+      "description": "Target category"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "description": "What went in",
+      "properties": {
+        "nature_layers": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Nature sound files used (e.g. rain, stream, wind)"
+        },
+        "drone_source": {
+          "type": "string",
+          "description": "Generated or recorded drone source"
+        },
+        "instrument": {
+          "type": "string",
+          "description": "Instrument description for ACE-Step prompt"
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "description": "ACE-Step parameters",
+      "properties": {
+        "engine": {"type": "string", "default": "ace-step"},
+        "prompt": {"type": "string"},
+        "lyrics": {"type": "string", "default": "[inst]"},
+        "bpm": {"type": "integer"},
+        "seed": {"type": "integer"},
+        "audio_duration": {"type": "number"},
+        "infer_step": {"type": "integer"},
+        "guidance_scale": {"type": "number"},
+        "scheduler_type": {"type": "string"},
+        "cfg_type": {"type": "string"},
+        "omega_scale": {"type": "number"},
+        "use_erg_tag": {"type": "boolean"},
+        "use_erg_lyric": {"type": "boolean"},
+        "use_erg_diffusion": {"type": "boolean"}
+      },
+      "required": ["prompt", "bpm", "seed"]
+    },
+    "post_processing": {
+      "type": "object",
+      "description": "FFmpeg chain applied",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "filter": {"type": "string"}
+            }
+          }
+        },
+        "target_lufs": {"type": "number"},
+        "target_true_peak": {"type": "number"}
+      }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "filename": {"type": "string"},
+        "format": {"type": "string"},
+        "duration_seconds": {"type": "number"},
+        "sample_rate": {"type": "integer"}
+      }
+    },
+    "listening": {
+      "type": "object",
+      "description": "Human QA results",
+      "properties": {
+        "comfort_50_75": {"type": "boolean", "description": "50-75% volume feels right"},
+        "no_harshness": {"type": "boolean"},
+        "category_match": {"type": "boolean"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

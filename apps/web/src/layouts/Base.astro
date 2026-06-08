@@ -1,0 +1,59 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import BuildVersion from '../components/BuildVersion.astro';
+
+export interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'ArgoBeat',
+  description = 'Music-first focus, relaxation, and sleep audio with subtle target-rate modulation.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <ClientRouter />
+  </head>
+  <body data-theme="dark">
+    <slot />
+    <footer class="build-footer">
+      <BuildVersion showBuild />
+    </footer>
+    <script>
+      try {
+        const saved = localStorage.getItem('argobeat-theme') || 'dark';
+        document.body.setAttribute('data-theme', saved);
+      } catch {
+        document.body.setAttribute('data-theme', 'dark');
+      }
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  @import '../styles/global.css';
+
+  .build-footer {
+    position: fixed;
+    bottom: 4px;
+    right: 8px;
+    font-size: 9px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 9999;
+  }
+</style>

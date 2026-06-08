@@ -1,0 +1,24 @@
+# All audio served from R2 via CF Worker — never commit MP3s to git
+apps/web/public/audio/soundscapes/
+apps/web/public/audio/music/shared/
+apps/web/public/audio/music/provenance/
+# Instrument samples are small (~1.3MB) and deploy with the app
+!apps/web/public/audio/samples/
+
+# Local autonomous hackathon loop artifacts
+scratch/
+.hackathon-out/
+tools/__pycache__/
+.codex
+
+# Secrets
+.env
+.env.local
+.env.*.local
+workers/.wrangler/
+node_modules/
+# Build output
+apps/web/dist/
+apps/web/src/version.json
+
+__pycache__

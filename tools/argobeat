@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MUSIC_DIR="$ROOT/apps/web/public/audio/music/shared"
+SOUNDSCAPE_DIR="$ROOT/apps/web/public/audio/soundscapes"
+MANIFEST="$ROOT/packages/@argobeat/engine/src/soundscape/audio-manifest.ts"
+AUDIO_ROOT="${ARGOBEAT_AUDIO_ROOT:-}"
+if [[ -z "$AUDIO_ROOT" ]]; then
+  if [[ -f "$ROOT/apps/web/public/audio/music/shared/aegean-drift.mp3" && -f "$ROOT/apps/web/public/audio/soundscapes/thunder/thunder-straget.mp3" ]]; then
+    AUDIO_ROOT="$ROOT/apps/web/public/audio"
+  else
+    AUDIO_ROOT="/mnt/AllShare/Argobeat/cloudflare-backup-2026-06-01/audio"
+  fi
+fi
+
+usage() {
+  cat <<'EOF'
+ArgoBeat audio administration
+
+Commands:
+  tools/argobeat ingest-music <file.mp3> --id <slug> --name "Display Name"
+  tools/argobeat ingest-soundscape <file.mp3> --category rain --id <slug> --name "Display Name"
+  tools/argobeat validate-catalog
+  tools/argobeat analyze <file> --mood focus [--target-hz 15]
+  tools/argobeat export --output test.wav --mood focus --duration 30
+  tools/argobeat demo-export --out-dir .hackathon-out --mood focus --duration 30 --seed 424242
+
+Ingest copies the MP3 into the correct public folder and prints the manifest
+entry to add. It does not mutate TypeScript automatically.
+EOF
+}
+
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+run_export() {
+  if command -v bun >/dev/null 2>&1; then
+    bun "$ROOT/tools/cli-export.ts" "$@"
+    return
+  fi
+
+  npx tsx "$ROOT/tools/cli-export.ts" "$@"
+}
+
+duration_seconds() {
+  ffprobe -v error -show_entries format=duration -of default=nk=1:nw=1 "$1"
+}
+
+size_mb() {
+  python3 - "$1" <<'PY'
+import os, sys
+print(f"{os.path.getsize(sys.argv[1]) / 1024 / 1024:.1f}")
+PY
+}
+
+copy_audio() {
+  local src="$1"
+  local dest="$2"
+  local min_seconds="$3"
+  local max_mb="$4"
+  test -f "$src" || die "file not found: $src"
+  [[ "${src,,}" == *.mp3 ]] || die "only MP3 files are supported for now"
+
+  local duration
+  duration="$(duration_seconds "$src")"
+  local too_short
+  too_short="$(python3 - "$duration" "$min_seconds" <<'PY'
+import sys
+print("yes" if float(sys.argv[1]) < float(sys.argv[2]) else "no")
+PY
+)"
+  [[ "$too_short" == "no" ]] || die "audio is too short: ${duration}s, minimum ${min_seconds}s"
+
+  local mb
+  mb="$(size_mb "$src")"
+  local too_large
+  too_large="$(python3 - "$mb" "$max_mb" <<'PY'
+import sys
+print("yes" if float(sys.argv[1]) > float(sys.argv[2]) else "no")
+PY
+)"
+  [[ "$too_large" == "no" ]] || die "audio is too large: ${mb}MB, limit ${max_mb}MB"
+
+  mkdir -p "$(dirname "$dest")"
+  cp "$src" "$dest"
+  echo "Copied: $dest"
+  echo "Duration: ${duration}s"
+  echo "Size: ${mb}MB"
+}
+
+parse_common_flags() {
+  ID=""
+  NAME=""
+  CATEGORY=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --id) ID="${2:-}"; shift 2 ;;
+      --name) NAME="${2:-}"; shift 2 ;;
+      --category) CATEGORY="${2:-}"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [[ -n "$ID" ]] || die "--id is required"
+  [[ -n "$NAME" ]] || die "--name is required"
+}
+
+validate_catalog() {
+  python3 "$ROOT/tools/validate_audio_manifest.py"
+}
+
+cmd="${1:-}"
+shift || true
+[[ "${1:-}" == "--" ]] && shift
+
+case "$cmd" in
+  ingest-music)
+    src="${1:-}"; shift || true
+    parse_common_flags "$@"
+    dest="$MUSIC_DIR/$ID.mp3"
+    copy_audio "$src" "$dest" 60 15
+    echo ""
+    echo "Add to SHARED_MUSIC_LIBRARY:"
+    echo "  '$ID': { id: '$ID', name: '$NAME', file: 'shared/$ID.mp3' },"
+    ;;
+  ingest-soundscape)
+    src="${1:-}"; shift || true
+    parse_common_flags "$@"
+    [[ -n "$CATEGORY" ]] || die "--category is required"
+    dest="$SOUNDSCAPE_DIR/$CATEGORY/$ID.mp3"
+    copy_audio "$src" "$dest" 30 25
+    echo ""
+    echo "Add to SOUNDSCAPE_TRACKS.$CATEGORY:"
+    echo "  { id: '$CATEGORY-$ID', name: '$NAME', file: '$ID.mp3' },"
+    ;;
+  validate-catalog)
+    validate_catalog
+    ;;
+  analyze)
+    file="${1:-}"; shift || true
+    python3 "$ROOT/tools/analyze_audio.py" --file "$file" "$@"
+    ;;
+  export)
+    run_export "$@"
+    ;;
+  demo-export)
+    python3 "$ROOT/tools/export_demo_loop.py" "$@"
+    ;;
+  ""|-h|--help|help)
+    usage
+    ;;
+  *)
+    usage
+    die "unknown command: $cmd"
+    ;;
+esac

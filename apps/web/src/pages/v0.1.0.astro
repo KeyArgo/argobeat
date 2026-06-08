@@ -1,0 +1,148 @@
+---
+import Base from '../layouts/Base.astro';
+import Navbar from '../components/layout/Navbar.astro';
+import ArgoBeatPlayer from '../components/player/v010/ArgoBeatPlayer.astro';
+---
+
+<Base title="ArgoBeat v0.1.0 — Legacy Player" description="ArgoBeat v0.1.0 preserved interface for curated soundscapes, music, and layered playback.">
+  <Navbar currentPage="app" />
+  <main class="legacy-page">
+    <div class="app-stack">
+      <div class="version-switch" aria-label="App version">
+        <a href="/app" onclick="return confirmVersionSwitch(event, 'v0.2.0')">v0.2.0</a>
+        <span>v0.1.0</span>
+      </div>
+      <div class="persistent-player-route-host">
+        <ArgoBeatPlayer />
+      </div>
+    </div>
+  </main>
+  <script is:inline>
+    function confirmVersionSwitch(e, target) {
+      // Stop the active engine BEFORE the ClientRouter view-transition
+      // swaps the DOM. Without this, the AudioContext survives.
+      var active = window.__argobeatEngine;
+      if (active) {
+        active.stop();
+        active.destroy();
+      }
+      window.__argobeatEngine = null;
+
+      try {
+        const state = {
+          version: target,
+          timestamp: Date.now(),
+          path: window.location.pathname
+        };
+        localStorage.setItem('argobeat_pending_switch', JSON.stringify(state));
+      } catch (_) {}
+      return true;
+    }
+    (function() {
+      try {
+        const pending = localStorage.getItem('argobeat_pending_switch');
+        if (pending) {
+          const data = JSON.parse(pending);
+          localStorage.removeItem('argobeat_pending_switch');
+          // If the landed page doesn't match the pending version, redirect
+          const isOnTarget =
+            (data.version === 'v0.2.0' && window.location.pathname === '/app') ||
+            (data.version === 'v0.1.0' && window.location.pathname === '/v0.1.0');
+          if (!isOnTarget) {
+            window.location.href = data.version === 'v0.2.0' ? '/app' : '/v0.1.0';
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
+</Base>
+
+<style>
+  .legacy-page {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 20px 8px;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 100%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
+      var(--color-bg-primary);
+  }
+
+  .app-stack {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .version-switch {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    white-space: nowrap;
+  }
+
+  .version-switch::-webkit-scrollbar {
+    display: none;
+  }
+
+  .version-switch span,
+  .version-switch a {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.4);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .version-switch > span:first-child {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .version-switch a {
+    cursor: pointer;
+  }
+
+  .version-switch a:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.25);
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .persistent-player-route-host {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 20px 0;
+    margin-top: 0;
+  }
+
+  @media (max-width: 640px) {
+    .legacy-page {
+      padding: 20px 8px;
+      align-items: flex-start;
+      padding-top: 24px;
+    }
+
+    .version-switch {
+      margin-bottom: 8px;
+    }
+
+    .persistent-player-route-host {
+      padding: 24px 8px 0;
+      margin-top: 0;
+    }
+  }
+</style>

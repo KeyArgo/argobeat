@@ -1,0 +1,31 @@
+{
+  "name": "argobeat",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "prebuild": "bash scripts/build-version.sh",
+    "dev": "pnpm --filter argobeat-web dev",
+    "build": "pnpm --filter @argobeat/engine type-check && pnpm --filter argobeat-web build",
+    "preview": "pnpm --filter argobeat-web preview",
+    "type-check": "pnpm -r type-check",
+    "test": "pnpm type-check && pnpm audio:validate && pnpm catalog:validate",
+    "catalog:validate": "tools/argobeat validate-catalog",
+    "audio:validate": "python3 tools/validate_audio_manifest.py",
+    "audio:ingest": "python3 tools/ingest_audio.py",
+    "audio:analyze": "python3 tools/analyze_audio.py",
+    "audio:demo": "./tools/argobeat demo-export",
+    "catalog:analyze": "python3 tools/analyze_catalog.py",
+    "hackathon:preflight": "python3 tools/hackathon_agent_loop.py preflight",
+    "hackathon:bench": "python3 tools/hackathon_agent_loop.py bench --mode focus --duration 30 --seed 424242",
+    "hackathon:autoloop": "python3 tools/hackathon_agent_loop.py run-once --mode focus --duration 30 --seed 424242",
+    "hackathon:code-loop": "python3 tools/hackathon_agent_loop.py code-loop --mode focus"
+  },
+  "devDependencies": {
+    "node-web-audio-api": "^1.0.9",
+    "wav-encoder": "^1.3.0"
+  },
+  "dependencies": {
+    "tslib": "^2.8.1"
+  }
+}

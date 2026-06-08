@@ -1,0 +1,43 @@
+---
+import versionInfo from '../version.json';
+
+export interface Props {
+  showBuild?: boolean;
+}
+
+const { showBuild = false } = Astro.props;
+const rawVersion = versionInfo.version || 'v0.2.0';
+const match = rawVersion.match(/^(v[\d.]+)(?:-(\d{4}\.\d{2}\.\d{2})\.(\d+)\+([0-9a-f]+))?$/i);
+const release = match?.[1] ?? rawVersion;
+const buildDate = match?.[2] ?? versionInfo.date ?? '';
+const buildNum = match?.[3] ?? '';
+const commit = match?.[4] ?? versionInfo.commit ?? '';
+const buildLabel = buildDate ? `Build ${buildDate}.${buildNum}` : '';
+---
+
+<div class="build-version" title={`commit ${commit}`}>
+  <span class="release">ArgoBeat {release}</span>
+  {showBuild && buildLabel && <span class="build">{buildLabel}</span>}
+</div>
+
+<style>
+  .build-version {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    line-height: 1.2;
+  }
+  .release {
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.5);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.02em;
+  }
+  .build {
+    font-size: 9px;
+    color: rgba(148, 163, 184, 0.35);
+    font-family: monospace;
+    letter-spacing: 0.03em;
+  }
+</style>

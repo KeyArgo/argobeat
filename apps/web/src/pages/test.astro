@@ -1,0 +1,203 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="ArgoBeat — Engine Test">
+  <div class="test-container">
+    <h1>ArgoBeat Engine Test</h1>
+    <p class="subtitle">Verify v2 engine with real audio + subtle target-rate modulation.</p>
+
+    <section class="test-section">
+      <h3>1. Quick Play Test</h3>
+      <select id="test-mood">
+        <option value="focus">Focus</option>
+        <option value="deepWork">Deep Work</option>
+        <option value="relax">Relax</option>
+        <option value="meditate">Meditate</option>
+        <option value="sleep">Sleep</option>
+      </select>
+      <select id="test-category">
+        <option value="">Auto</option>
+        <option value="rain">Rain</option>
+        <option value="ocean">Ocean</option>
+        <option value="forest">Forest</option>
+        <option value="cafe">Cafe</option>
+        <option value="fire">Fire</option>
+        <option value="space">Space</option>
+        <option value="stream">Stream</option>
+        <option value="wind">Wind</option>
+        <option value="thunder">Thunder</option>
+      </select>
+      <button id="test-play">Play</button>
+      <button id="test-stop" disabled>Stop</button>
+      <div id="test-result" class="result"></div>
+    </section>
+
+    <section class="test-section">
+      <h3>2. Mood Configs</h3>
+      <button id="test-moods">Show All Moods</button>
+      <div id="test-moods-result" class="result"></div>
+    </section>
+
+    <div id="test-log" class="test-log"></div>
+  </div>
+</Base>
+
+<script>
+  import { ArgoBeatEngine, MOODS } from '@argobeat/engine';
+  import type { Mood, SoundscapeCategory } from '@argobeat/engine';
+
+  let engine: ArgoBeatEngine | null = null;
+
+  const moodSelect = document.getElementById('test-mood') as HTMLSelectElement;
+  const catSelect = document.getElementById('test-category') as HTMLSelectElement;
+  const btnPlay = document.getElementById('test-play') as HTMLButtonElement;
+  const btnStop = document.getElementById('test-stop') as HTMLButtonElement;
+  const resultEl = document.getElementById('test-result')!;
+  const logEl = document.getElementById('test-log')!;
+
+  function log(msg: string) {
+    const time = new Date().toLocaleTimeString();
+    logEl.innerHTML += `<div>[${time}] ${msg}</div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  btnPlay.addEventListener('click', async () => {
+    try {
+      if (!engine) {
+        engine = new ArgoBeatEngine();
+        await engine.initialize();
+        log('Engine initialized');
+
+        engine.on('stateChange', (state) => {
+          log(`State: mood=${state.mood} playing=${state.isPlaying} hz=${state.sessionHz} cat=${state.soundscapeCategory}`);
+        });
+
+        engine.on('tick', (elapsed, total) => {
+          resultEl.textContent = `Playing — ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')} / ${Math.floor(total/60)}:${String(total%60).padStart(2,'0')}`;
+        });
+
+        engine.on('error', (err) => {
+          log(`Error: ${err.message}`);
+        });
+      }
+
+      const mood = moodSelect.value as Mood;
+      const category = catSelect.value || undefined;
+      const opts: { category?: SoundscapeCategory; source: 'both' } = { source: 'both' };
+      if (category) opts.category = category as SoundscapeCategory;
+
+      await engine.play(mood, opts);
+      const liveState = engine.getState();
+      log(`Playing: ${mood}${category ? ` + ${category}` : ' (auto)'} source=${liveState.audioSource} cat=${liveState.soundscapeCategory}`);
+      resultEl.textContent = `Playing ${mood}...`;
+      resultEl.style.color = '#a8e6cf';
+      btnPlay.disabled = true;
+      btnStop.disabled = false;
+    } catch (e: any) {
+      log(`Play failed: ${e.message}`);
+      resultEl.textContent = `Error: ${e.message}`;
+      resultEl.style.color = '#ff8a80';
+    }
+  });
+
+  btnStop.addEventListener('click', () => {
+    if (engine) engine.stop();
+    resultEl.textContent = 'Stopped';
+    btnPlay.disabled = false;
+    btnStop.disabled = true;
+    log('Stopped');
+  });
+
+  document.getElementById('test-moods')!.addEventListener('click', () => {
+    const el = document.getElementById('test-moods-result')!;
+    const lines = Object.values(MOODS).map(m =>
+      `<div><strong>${m.label}</strong> — ${m.band} ${m.hzRange[0]}-${m.hzRange[1]}Hz (default ${m.defaultHz}Hz) — ${m.sessionMinutes}min</div>`
+    );
+    el.innerHTML = lines.join('');
+    el.style.color = '#a8e6cf';
+  });
+</script>
+
+<style>
+  .test-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #e0e7ff, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--color-text-secondary);
+    margin-bottom: 32px;
+    font-size: 14px;
+  }
+
+  .test-section {
+    background: rgba(20, 25, 40, 0.5);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .test-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: var(--color-text-primary);
+  }
+
+  .result {
+    margin-top: 10px;
+    font-size: 13px;
+    font-family: monospace;
+    min-height: 1.5em;
+  }
+
+  button, select {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+
+  select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 8px 12px;
+  }
+
+  button:hover:not(:disabled) { opacity: 0.9; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .test-log {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 16px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    color: #a8e6cf;
+    margin-top: 24px;
+  }
+
+  .test-log div { margin-bottom: 6px; line-height: 1.4; }
+</style>

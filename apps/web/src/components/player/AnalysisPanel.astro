@@ -1,0 +1,627 @@
+---
+/**
+ * AnalysisPanel — real-time acoustic feature display + AI interpretation.
+ *
+ * Opt-in debug/tuning panel. Shows live Meyda features vs reference targets,
+ * triggers AI analysis via the /api/audio-analyze Worker, and applies
+ * parameter suggestions to the GenerativeEngine with user confirmation.
+ *
+ * Per design review: parameters are shown as a diff before applying,
+ * max 20% step change enforced server-side, undo available.
+ */
+---
+
+<div class="analysis-panel" id="analysis-panel">
+  <div class="ap-header">
+    <span class="ap-title">Audio Analysis</span>
+    <button class="ap-close" id="ap-close" aria-label="Close">✕</button>
+  </div>
+
+  <div class="ap-score-row">
+    <div class="ap-score" id="ap-score">—</div>
+    <div class="ap-score-label">vs <span id="ap-ref-label">reference</span></div>
+    <div class="ap-stereo-warning" id="ap-stereo-warning" hidden>
+      ⚠ Mono path — stereo content not measurable
+    </div>
+  </div>
+
+  <!-- Live feature gauges -->
+  <div class="ap-gauges" id="ap-gauges">
+    <div class="ap-gauge" data-feature="lufsEstimate">
+      <div class="ap-gauge-label">Loudness (LUFS)</div>
+      <div class="ap-gauge-bar-wrap">
+        <div class="ap-gauge-bar" id="gauge-lufs"></div>
+        <div class="ap-gauge-target" id="target-lufs"></div>
+      </div>
+      <div class="ap-gauge-value" id="val-lufs">—</div>
+    </div>
+    <div class="ap-gauge" data-feature="spectralCentroid">
+      <div class="ap-gauge-label">Brightness (Hz)</div>
+      <div class="ap-gauge-bar-wrap">
+        <div class="ap-gauge-bar" id="gauge-centroid"></div>
+        <div class="ap-gauge-target" id="target-centroid"></div>
+      </div>
+      <div class="ap-gauge-value" id="val-centroid">—</div>
+    </div>
+    <div class="ap-gauge" data-feature="amModulationDepth">
+      <div class="ap-gauge-label">AM Depth (target Hz)</div>
+      <div class="ap-gauge-bar-wrap">
+        <div class="ap-gauge-bar" id="gauge-am"></div>
+        <div class="ap-gauge-target" id="target-am"></div>
+      </div>
+      <div class="ap-gauge-value" id="val-am">—</div>
+    </div>
+    <div class="ap-gauge" data-feature="spectralFlatness">
+      <div class="ap-gauge-label">Flatness (noise↔tone)</div>
+      <div class="ap-gauge-bar-wrap">
+        <div class="ap-gauge-bar" id="gauge-flat"></div>
+        <div class="ap-gauge-target" id="target-flat"></div>
+      </div>
+      <div class="ap-gauge-value" id="val-flat">—</div>
+    </div>
+    <div class="ap-gauge" data-feature="spectralFlux">
+      <div class="ap-gauge-label">Flux (stability)</div>
+      <div class="ap-gauge-bar-wrap">
+        <div class="ap-gauge-bar" id="gauge-flux"></div>
+        <div class="ap-gauge-target" id="target-flux"></div>
+      </div>
+      <div class="ap-gauge-value" id="val-flux">—</div>
+    </div>
+  </div>
+
+  <!-- AI analysis section -->
+  <div class="ap-ai-section">
+    <div class="ap-controls-row">
+      <button class="ap-analyze-btn" id="ap-analyze-btn">Analyze now</button>
+      <label class="ap-autotune-label">
+        <input type="checkbox" id="ap-autotune" />
+        <span class="ap-autotune-text">Auto every</span>
+        <select id="ap-autotune-interval" class="ap-interval-select">
+          <option value="15">15s</option>
+          <option value="30" selected>30s</option>
+          <option value="60">60s</option>
+          <option value="120">2m</option>
+        </select>
+        <span class="ap-autotune-text">· apply if score &lt;</span>
+        <select id="ap-autotune-threshold" class="ap-interval-select">
+          <option value="5">5</option>
+          <option value="6" selected>6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+        </select>
+      </label>
+    </div>
+    <div class="ap-autotune-status" id="ap-autotune-status" hidden></div>
+
+    <div class="ap-ai-result" id="ap-ai-result" hidden>
+      <div class="ap-ai-desc" id="ap-ai-desc"></div>
+      <div class="ap-ai-priority" id="ap-ai-priority"></div>
+      <div class="ap-ai-disclaimer" id="ap-ai-disclaimer"></div>
+      <div class="ap-ai-suggestions" id="ap-ai-suggestions" hidden>
+        <div class="ap-suggestions-title">Suggested parameter changes:</div>
+        <div class="ap-suggestions-list" id="ap-suggestions-list"></div>
+        <div class="ap-suggestions-actions">
+          <button class="ap-apply-btn" id="ap-apply-btn">Apply changes</button>
+          <button class="ap-undo-btn" id="ap-undo-btn" hidden>Undo</button>
+        </div>
+      </div>
+    </div>
+    <div class="ap-analyzing" id="ap-analyzing" hidden>Analyzing…</div>
+    <div class="ap-ai-error" id="ap-ai-error" hidden></div>
+
+    <!-- Auto-tune log -->
+    <div class="ap-log" id="ap-log" hidden>
+      <div class="ap-log-title">Auto-tune log</div>
+      <div class="ap-log-entries" id="ap-log-entries"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .analysis-panel {
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: #e2e8f0;
+    margin-top: 12px;
+    max-width: 480px;
+  }
+  .ap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .ap-title { font-weight: 600; font-size: 13px; }
+  .ap-close { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 2px 6px; }
+  .ap-score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ap-score { font-size: 22px; font-weight: 700; color: #a78bfa; min-width: 40px; }
+  .ap-score-label { color: #64748b; font-size: 11px; }
+  .ap-stereo-warning { color: #f59e0b; font-size: 11px; }
+
+  .ap-gauges { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .ap-gauge { display: grid; grid-template-columns: 130px 1fr 50px; align-items: center; gap: 8px; }
+  .ap-gauge-label { color: #94a3b8; font-size: 11px; }
+  .ap-gauge-bar-wrap { position: relative; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: visible; }
+  .ap-gauge-bar { height: 100%; border-radius: 3px; transition: width 0.3s ease, background 0.3s; }
+  .ap-gauge-bar.in-range { background: #10b981; }
+  .ap-gauge-bar.out-range { background: #f59e0b; }
+  .ap-gauge-target { position: absolute; top: -3px; width: 2px; height: 12px; background: rgba(167,139,250,0.7); border-radius: 1px; }
+  .ap-gauge-value { color: #cbd5e1; font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .ap-ai-section { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; }
+  .ap-analyze-btn {
+    width: 100%; padding: 7px 12px; border-radius: 6px; border: 1px solid rgba(167,139,250,0.4);
+    background: rgba(167,139,250,0.1); color: #a78bfa; font-size: 12px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ap-analyze-btn:hover { background: rgba(167,139,250,0.2); }
+  .ap-analyze-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .ap-ai-result { margin-top: 10px; }
+  .ap-ai-desc { color: #cbd5e1; line-height: 1.5; margin-bottom: 8px; }
+  .ap-ai-priority { color: #fbbf24; font-size: 11px; margin-bottom: 4px; }
+  .ap-ai-disclaimer { color: #475569; font-size: 10px; font-style: italic; margin-bottom: 10px; }
+  .ap-ai-suggestions { border: 1px solid rgba(167,139,250,0.3); border-radius: 6px; padding: 10px; margin-top: 8px; }
+  .ap-suggestions-title { font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
+  .ap-suggestions-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .ap-param-row { display: flex; justify-content: space-between; font-size: 11px; }
+  .ap-param-name { color: #94a3b8; }
+  .ap-param-change { color: #a78bfa; }
+  .ap-param-change.positive { color: #34d399; }
+  .ap-param-change.negative { color: #f87171; }
+  .ap-suggestions-actions { display: flex; gap: 8px; }
+  .ap-apply-btn, .ap-undo-btn {
+    flex: 1; padding: 6px; border-radius: 5px; border: none; font-size: 11px; cursor: pointer;
+  }
+  .ap-apply-btn { background: #7c3aed; color: white; }
+  .ap-apply-btn:hover { background: #6d28d9; }
+  .ap-undo-btn { background: rgba(255,255,255,0.08); color: #94a3b8; }
+  .ap-analyzing { color: #64748b; font-size: 11px; margin-top: 8px; text-align: center; }
+  .ap-ai-error { color: #f87171; font-size: 11px; margin-top: 8px; }
+
+  .ap-controls-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ap-analyze-btn { flex-shrink: 0; padding: 7px 12px; }
+  .ap-autotune-label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #94a3b8; cursor: pointer; flex-wrap: wrap; }
+  .ap-autotune-label input[type="checkbox"] { width: 13px; height: 13px; accent-color: #a78bfa; cursor: pointer; }
+  .ap-autotune-text { white-space: nowrap; }
+  .ap-interval-select {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    color: #cbd5e1; border-radius: 4px; font-size: 11px; padding: 1px 4px; cursor: pointer;
+  }
+  .ap-autotune-status {
+    font-size: 11px; color: #a78bfa; margin-top: 4px; padding: 4px 8px;
+    background: rgba(167,139,250,0.08); border-radius: 4px;
+  }
+  .ap-log { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; }
+  .ap-log-title { font-size: 10px; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ap-log-entries { display: flex; flex-direction: column; gap: 3px; max-height: 100px; overflow-y: auto; }
+  .ap-log-entry { font-size: 10px; color: #64748b; font-variant-numeric: tabular-nums; }
+  .ap-log-entry.applied { color: #34d399; }
+  .ap-log-entry.skipped { color: #475569; }
+</style>
+
+<script>
+  // Analysis panel — zero external imports, pure Web Audio API math.
+  // Meyda dropped: bundle caused AnalyserNode errors in Astro/Vite.
+  // All features computed inline from getByteFrequencyData / getByteTimeDomainData.
+
+  const ANALYZE_ENDPOINT = '/api/audio-analyze';
+  const RECOMMENDATION_APPLIED_ENDPOINT = '/api/audio-analyze/recommendations-applied';
+  const GAUGE_MAX: Record<string, number> = {
+    lufsEstimate: -10,       // LUFS scale (negative, so -10 is loudest shown)
+    spectralCentroid: 4000,
+    amModulationDepth: 0.25,
+    spectralFlatness: 1.0,
+    spectralFlux: 0.3,
+  };
+
+  // ── Inline reference targets — calibrated for live browser mix (music + soundscape) ─────
+  // Note: Meyda spectralCentroid on mixed audio (soundscapes + music) reads 3000-10000 Hz,
+  // far higher than librosa centroid on dry renders (~800-1100 Hz). Ranges reflect real
+  // browser output including broadband nature soundscapes.
+  // LUFS targets match measured reference tracks (~-29 dB) ± soundscape energy contribution.
+  const REFS: Record<string, Record<string, [number,number]>> = {
+    focus:    { lufsEstimate:[-30,-10], spectralCentroid:[500,12000], spectralFlatness:[0.05,0.98], spectralFlux:[0,0.15], amModulationDepth:[0.05,1.0] },
+    deepWork: { lufsEstimate:[-30,-10], spectralCentroid:[500,12000], spectralFlatness:[0.05,0.98], spectralFlux:[0,0.15], amModulationDepth:[0.05,1.0] },
+    relax:    { lufsEstimate:[-30,-10], spectralCentroid:[500,12000], spectralFlatness:[0.05,0.98], spectralFlux:[0,0.18], amModulationDepth:[0.04,1.0] },
+    meditate: { lufsEstimate:[-32,-10], spectralCentroid:[200,10000], spectralFlatness:[0.02,0.98], spectralFlux:[0,0.08], amModulationDepth:[0.02,1.0] },
+    sleep:    { lufsEstimate:[-34,-10], spectralCentroid:[100,10000], spectralFlatness:[0.10,0.98], spectralFlux:[0,0.05], amModulationDepth:[0.01,1.0] },
+  };
+  const REF_LABELS: Record<string,string> = { focus:'Focus (Calm)', deepWork:'Deep Work', relax:'Relax', meditate:'Meditate', sleep:'Sleep' };
+
+  // ── Default params per mood (used until Apply sets real values) ──
+  const MOOD_DEFAULTS: Record<string, Record<string,number>> = {
+    focus:    { padFilterHz:725, padVolume:0.385, textureVolume:0.035, amDepth:0.12 },
+    deepWork: { padFilterHz:650, padVolume:0.420, textureVolume:0.043, amDepth:0.14 },
+    relax:    { padFilterHz:1050,padVolume:0.350, textureVolume:0.025, amDepth:0.10 },
+    meditate: { padFilterHz:475, padVolume:0.455, textureVolume:0.060, amDepth:0.08 },
+    sleep:    { padFilterHz:300, padVolume:0.315, textureVolume:0.075, amDepth:0.05 },
+  };
+
+  // ── State ────────────────────────────────────────────────────────
+  let analyserNode: AnalyserNode | null = null;
+  let rafHandle: number | null = null;
+  let lastSnapshot: Record<string,number> = {};
+  let lastComparison: { overallScore:number, checks:any[], referenceId:string } | null = null;
+  let currentMood = 'focus';
+  let currentSource = 'generated';
+  let currentTrack = '';
+  let currentSoundscape = '';
+  let currentParams: Record<string,number> = { ...MOOD_DEFAULTS.focus };
+  let prevParams: Record<string,number> = {};
+  let pendingSuggestions: Record<string,number> = {};
+  let rmsHistory: number[] = [];
+  let autoTuneHandle: number | null = null;
+  let isAnalyzing = false;
+  let currentSessionId: string | null = null;
+  let pendingRecommendationId: string | null = null;
+
+  // ── Engine bridge ────────────────────────────────────────────────
+
+  window.addEventListener('argobeat:engineReady', (e: any) => {
+    const analyser = e.detail?.analyser as AnalyserNode;
+    if (!analyser) return;
+    if (rafHandle) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+    analyserNode = analyser;
+    rmsHistory = [];
+    // Reset params to mood defaults on each new play session
+    currentParams = { ...(MOOD_DEFAULTS[currentMood] ?? MOOD_DEFAULTS.focus) };
+    startExtraction();
+  });
+
+  window.addEventListener('argobeat:stateChange', (e: any) => {
+    const state = e.detail ?? {};
+    const prevMood = currentMood;
+    currentMood      = state.mood             ?? currentMood;
+    currentSource    = state.audioSource      ?? currentSource;
+    currentTrack     = state.currentMusicTrack ?? currentTrack;
+    currentSoundscape = state.soundscapeCategory ?? currentSoundscape;
+    // Update defaults if mood changed
+    if (currentMood !== prevMood) {
+      currentParams = { ...(MOOD_DEFAULTS[currentMood] ?? MOOD_DEFAULTS.focus) };
+    }
+  });
+
+  window.addEventListener('argobeat:stopped', () => {
+    if (rafHandle) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+    stopAutoTune();
+  });
+
+  window.addEventListener('argobeat:sessionState', (e: any) => {
+    currentSessionId = e.detail?.sessionId ?? null;
+  });
+
+  // ── Auto-tune controls ───────────────────────────────────────────
+  const autoTuneCheck   = document.getElementById('ap-autotune') as HTMLInputElement;
+  const autoTuneStatus  = document.getElementById('ap-autotune-status') as HTMLElement;
+  const autoTuneLog     = document.getElementById('ap-log') as HTMLElement;
+  const autoTuneEntries = document.getElementById('ap-log-entries') as HTMLElement;
+
+  function getAutoInterval(): number {
+    const sel = document.getElementById('ap-autotune-interval') as HTMLSelectElement;
+    return parseInt(sel?.value ?? '30', 10) * 1000;
+  }
+  function getAutoThreshold(): number {
+    const sel = document.getElementById('ap-autotune-threshold') as HTMLSelectElement;
+    return parseFloat(sel?.value ?? '6');
+  }
+
+  function logEntry(msg: string, type: 'applied' | 'skipped' | 'info' = 'info'): void {
+    if (!autoTuneEntries) return;
+    const t = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const el = document.createElement('div');
+    el.className = `ap-log-entry ${type}`;
+    el.textContent = `${t}  ${msg}`;
+    autoTuneEntries.prepend(el);
+    // Keep last 20 entries
+    while (autoTuneEntries.children.length > 20) autoTuneEntries.lastChild?.remove();
+    autoTuneLog?.removeAttribute('hidden');
+  }
+
+  function stopAutoTune(): void {
+    if (autoTuneHandle) { clearTimeout(autoTuneHandle); autoTuneHandle = null; }
+    if (autoTuneStatus) autoTuneStatus.setAttribute('hidden', '');
+    if (autoTuneCheck) autoTuneCheck.checked = false;
+  }
+
+  async function autoTuneCycle(): Promise<void> {
+    if (!autoTuneCheck?.checked) return;
+
+    const threshold = getAutoThreshold();
+    const score = lastComparison?.overallScore ?? 10;
+
+    if (autoTuneStatus) {
+      autoTuneStatus.textContent = `Auto-tune: score ${score.toFixed(1)} · ${score < threshold ? 'Analyzing…' : 'OK, watching…'}`;
+    }
+
+    if (score < threshold && !isAnalyzing && currentSource.includes('generated')) {
+      logEntry(`Score ${score.toFixed(1)} < ${threshold} — analyzing…`, 'info');
+      const result = await runAiAnalysis(true); // silent=true (no UI update)
+      if (result?.parameterSuggestions && Object.keys(result.parameterSuggestions).length > 0) {
+        applyParams(result.parameterSuggestions);
+        const changes = Object.entries(result.parameterSuggestions)
+          .map(([k, v]) => `${k}→${(v as number).toFixed(3)}`).join(', ');
+        logEntry(`Applied: ${changes}`, 'applied');
+        if (autoTuneStatus) autoTuneStatus.textContent = `Auto-tune: adjusted (${changes})`;
+      } else {
+        logEntry(`Score ${score.toFixed(1)} — no suggestions returned`, 'skipped');
+      }
+    } else if (score >= threshold) {
+      logEntry(`Score ${score.toFixed(1)} ≥ ${threshold} — no change needed`, 'skipped');
+    }
+
+    // Schedule next cycle
+    if (autoTuneCheck?.checked) {
+      autoTuneHandle = window.setTimeout(autoTuneCycle, getAutoInterval());
+    }
+  }
+
+  autoTuneCheck?.addEventListener('change', () => {
+    if (autoTuneCheck.checked) {
+      autoTuneStatus?.removeAttribute('hidden');
+      autoTuneStatus.textContent = 'Auto-tune active — first evaluation in ' +
+        (getAutoInterval() / 1000) + 's';
+      logEntry('Auto-tune enabled', 'info');
+      autoTuneHandle = window.setTimeout(autoTuneCycle, getAutoInterval());
+    } else {
+      stopAutoTune();
+      logEntry('Auto-tune disabled', 'info');
+    }
+  });
+
+  // ── Panel controls ───────────────────────────────────────────────
+
+  document.getElementById('ap-close')?.addEventListener('click', () => {
+    if (rafHandle) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+    document.getElementById('analysis-panel')?.setAttribute('hidden', '');
+  });
+
+  document.getElementById('ap-analyze-btn')?.addEventListener('click', () => {
+    if (!lastSnapshot || !lastComparison) return;
+    runAiAnalysis();
+  });
+
+  document.getElementById('ap-apply-btn')?.addEventListener('click', () => {
+    if (!pendingSuggestions || !Object.keys(pendingSuggestions).length) return;
+    prevParams = { ...currentParams };
+    applyParams(pendingSuggestions);
+    document.getElementById('ap-undo-btn')?.removeAttribute('hidden');
+    if (pendingRecommendationId) {
+      fetch(RECOMMENDATION_APPLIED_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendation_id: pendingRecommendationId }),
+      }).catch(() => {});
+    }
+  });
+
+  document.getElementById('ap-undo-btn')?.addEventListener('click', () => {
+    applyParams(prevParams);
+    document.getElementById('ap-undo-btn')?.setAttribute('hidden', '');
+  });
+
+  // ── Feature extraction (pure Web Audio, no Meyda) ────────────────
+
+  function startExtraction(): void {
+    if (!analyserNode || rafHandle) return;
+    const freqBuf = new Uint8Array(analyserNode.frequencyBinCount);
+    const timeBuf = new Uint8Array(analyserNode.fftSize);
+    const SR = analyserNode.context.sampleRate;
+    const binHz = SR / analyserNode.fftSize;
+    let prevFreq: Uint8Array | null = null;
+
+    function tick(): void {
+      if (!analyserNode) return;
+      analyserNode.getByteFrequencyData(freqBuf);
+      analyserNode.getByteTimeDomainData(timeBuf);
+
+      // RMS from time domain
+      let sqSum = 0;
+      for (let i = 0; i < timeBuf.length; i++) { const v = (timeBuf[i] - 128) / 128; sqSum += v*v; }
+      const rms = Math.sqrt(sqSum / timeBuf.length);
+      const lufs = rms > 0.00001 ? 20 * Math.log10(rms) - 0.691 : -70;
+
+      // Spectral centroid from freq domain
+      let weightedSum = 0, totalEnergy = 0;
+      for (let i = 0; i < freqBuf.length; i++) { const e = freqBuf[i]; totalEnergy += e; weightedSum += e * i * binHz; }
+      const centroid = totalEnergy > 0 ? weightedSum / totalEnergy : 0;
+
+      // Spectral flatness (geometric mean / arithmetic mean)
+      let logSum = 0, arithSum = 0, n = 0;
+      for (let i = 0; i < freqBuf.length; i++) { const v = freqBuf[i]; if (v > 0) { logSum += Math.log(v); arithSum += v; n++; } }
+      const flatness = n > 0 && arithSum > 0 ? Math.exp(logSum/n) / (arithSum/n) : 0;
+
+      // Spectral flux
+      let flux = 0;
+      if (prevFreq) { for (let i = 0; i < freqBuf.length; i++) { const d = freqBuf[i] - prevFreq[i]; flux += d*d; } flux = Math.sqrt(flux / freqBuf.length) / 255; }
+      prevFreq = new Uint8Array(freqBuf);
+
+      // Low freq ratio (<250 Hz)
+      const cutBin = Math.floor(250 / binHz);
+      let lowE = 0;
+      for (let i = 0; i <= cutBin && i < freqBuf.length; i++) lowE += freqBuf[i];
+      const lowFreqRatio = totalEnergy > 0 ? lowE / totalEnergy : 0;
+
+      // AM modulation depth (RMS envelope at 12-18 Hz)
+      rmsHistory.push(rms);
+      if (rmsHistory.length > 256) rmsHistory.shift();
+      let amDepth = 0, amRate = 0;
+      if (rmsHistory.length > 64) {
+        const win = rmsHistory.slice(-128);
+        const mean = win.reduce((a,b)=>a+b,0)/win.length;
+        const peak = Math.max(...win.map(v=>Math.abs(v-mean)));
+        amDepth = mean > 0.001 ? Math.min(1, peak/mean) : 0;
+        let xings = 0;
+        const det = win.map(v=>v-mean);
+        for (let i=1;i<det.length;i++) if(det[i-1]*det[i]<0) xings++;
+        amRate = xings/2 / ((win.length * 512) / SR);
+      }
+
+      lastSnapshot = { lufsEstimate:lufs, spectralCentroid:centroid, spectralFlatness:flatness,
+        spectralRolloff:0, spectralFlux:flux, amModulationDepth:amDepth, amModulationRateHz:amRate,
+        crestFactorDb:0, lowFreqEnergyRatio:lowFreqRatio, isStereo:0, rms };
+
+      // Compare to reference
+      const refTargets = REFS[currentMood] ?? REFS.focus;
+      const checks: any[] = [];
+      let scoreSum = 0, scoreN = 0;
+      for (const [feat, [lo,hi]] of Object.entries(refTargets)) {
+        const val = (lastSnapshot as any)[feat] ?? 0;
+        const inRange = val >= lo && val <= hi;
+        const center = (lo+hi)/2, spread = (hi-lo)/2;
+        const score = Math.max(0, 10 - Math.abs(val-center)/spread*10);
+        checks.push({ feature:feat, value:val, target:[lo,hi], inRange, score });
+        scoreSum += score; scoreN++;
+      }
+      const overallScore = scoreN > 0 ? scoreSum/scoreN : 5;
+      lastComparison = { overallScore, checks, referenceId: currentMood };
+
+      updateUI();
+      rafHandle = requestAnimationFrame(tick);
+    }
+    rafHandle = requestAnimationFrame(tick);
+  }
+
+  function updateUI(): void {
+    if (!lastComparison) return;
+    const cmp = lastComparison;
+    const snap = lastSnapshot;
+
+    const scoreEl = document.getElementById('ap-score');
+    if (scoreEl) scoreEl.textContent = cmp.overallScore.toFixed(1);
+    const refEl = document.getElementById('ap-ref-label');
+    if (refEl) refEl.textContent = REF_LABELS[currentMood] ?? currentMood;
+
+    setGauge('lufs',    snap.lufsEstimate,      cmp, -50, -10, v=>`${v.toFixed(1)} dB`);
+    setGauge('centroid',snap.spectralCentroid,   cmp, 0,  4000, v=>`${Math.round(v)} Hz`);
+    setGauge('am',      snap.amModulationDepth,  cmp, 0,  0.25, v=>v.toFixed(3));
+    setGauge('flat',    snap.spectralFlatness,   cmp, 0,  1.0,  v=>v.toFixed(3));
+    setGauge('flux',    snap.spectralFlux,       cmp, 0,  0.3,  v=>v.toFixed(3));
+  }
+
+  function setGauge(id: string, value: number, cmp: any, min: number, max: number, fmt: (v:number)=>string): void {
+    const featMap: Record<string,string> = { lufs:'lufsEstimate', centroid:'spectralCentroid', am:'amModulationDepth', flat:'spectralFlatness', flux:'spectralFlux' };
+    const check = cmp.checks.find((c:any) => c.feature === featMap[id]);
+    const pct = Math.max(0, Math.min(100, ((value-min)/(max-min))*100));
+    const bar = document.getElementById(`gauge-${id}`);
+    const val = document.getElementById(`val-${id}`);
+    if (bar) { bar.style.width=`${pct}%`; bar.className=`ap-gauge-bar ${check?.inRange?'in-range':'out-range'}`; }
+    if (val) val.textContent = fmt(value);
+    if (check) {
+      const [lo,hi] = check.target;
+      const midPct = (((lo+hi)/2-min)/(max-min))*100;
+      const tgt = document.getElementById(`target-${id}`);
+      if (tgt) tgt.style.left=`${Math.max(0,Math.min(99,midPct))}%`;
+    }
+  }
+
+  // ── AI analysis ──────────────────────────────────────────────────
+
+  async function runAiAnalysis(silent = false): Promise<any> {
+    // Lock immediately to prevent concurrent calls (race condition guard)
+    if (isAnalyzing) return null;
+    isAnalyzing = true;
+
+    if (!lastSnapshot || !lastComparison) {
+      isAnalyzing = false;
+      return null;
+    }
+
+    const btn = document.getElementById('ap-analyze-btn') as HTMLButtonElement;
+    const analyzing = document.getElementById('ap-analyzing');
+    const result = document.getElementById('ap-ai-result');
+    const error = document.getElementById('ap-ai-error');
+
+    isAnalyzing = true;
+    if (!silent) {
+      btn.disabled = true;
+      analyzing?.removeAttribute('hidden');
+      result?.setAttribute('hidden', '');
+      error?.setAttribute('hidden', '');
+    }
+
+    try {
+      const body = {
+        session_id: currentSessionId ?? undefined,
+        features: lastSnapshot,
+        comparison: lastComparison,
+        mood: currentMood,
+        source: currentSource,
+        track: currentTrack || undefined,
+        soundscape: currentSoundscape || undefined,
+        triggered: silent ? 'auto-tune' : 'manual',
+        currentParams: currentSource.includes('generated') ? currentParams : undefined,
+      };
+
+      const res = await fetch(ANALYZE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      const data = await res.json() as any;
+      if (!silent) renderAiResult(data);
+      return data;
+    } catch (err: any) {
+      if (!silent && error) {
+        error.textContent = `Analysis failed: ${err.message}`;
+        error.removeAttribute('hidden');
+      }
+      return null;
+    } finally {
+      isAnalyzing = false;
+      if (!silent) {
+        btn.disabled = false;
+        analyzing?.setAttribute('hidden', '');
+      }
+    }
+  }
+
+  function renderAiResult(data: any): void {
+    const result = document.getElementById('ap-ai-result');
+    if (!result) return;
+
+    const desc = document.getElementById('ap-ai-desc');
+    if (desc) desc.textContent = data.description ?? '';
+
+    const priority = document.getElementById('ap-ai-priority');
+    if (priority) priority.textContent = `Priority: ${data.topPriority ?? ''}`;
+
+    const disclaimer = document.getElementById('ap-ai-disclaimer');
+    if (disclaimer) disclaimer.textContent = data.disclaimer ?? '';
+
+    // Parameter suggestions (generated mode only)
+    const suggestions = data.parameterSuggestions;
+    pendingRecommendationId = data.recommendationId ?? null;
+    const sugBox = document.getElementById('ap-ai-suggestions');
+    const sugList = document.getElementById('ap-suggestions-list');
+
+    if (suggestions && Object.keys(suggestions).length > 0 && sugBox && sugList) {
+      pendingSuggestions = suggestions;
+      sugList.innerHTML = Object.entries(suggestions).map(([k, v]) => {
+        const cur = currentParams[k] ?? 0;
+        const delta = (v as number) - cur;
+        const sign = delta >= 0 ? '+' : '';
+        const cls = delta > 0 ? 'positive' : delta < 0 ? 'negative' : '';
+        return `<div class="ap-param-row">
+          <span class="ap-param-name">${k}</span>
+          <span class="ap-param-change ${cls}">${cur.toFixed(3)} → ${(v as number).toFixed(3)} (${sign}${delta.toFixed(3)})</span>
+        </div>`;
+      }).join('');
+      sugBox.removeAttribute('hidden');
+    } else if (sugBox) {
+      sugBox.setAttribute('hidden', '');
+    }
+
+    result.removeAttribute('hidden');
+  }
+
+  function applyParams(params: Record<string, number>): void {
+    currentParams = { ...currentParams, ...params };
+    window.dispatchEvent(new CustomEvent('argobeat:applyGenerativeParams', { detail: params }));
+  }
+
+  // Start feature extraction when panel becomes visible (triggered by player)
+  window.addEventListener('argobeat:analysisOpen', () => {
+    if (analyserNode && !rafHandle) startExtraction();
+  });
+</script>

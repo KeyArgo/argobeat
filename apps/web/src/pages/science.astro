@@ -1,0 +1,684 @@
+---
+/**
+ * Science page — audio modulation explainer, mood bands, architecture,
+ * conservative evidence framing, and QA guidance.
+ */
+import Base from '../layouts/Base.astro';
+import Navbar from '../components/layout/Navbar.astro';
+import ArgoBeatPlayer from '../components/player/ArgoBeatPlayer.astro';
+---
+
+<Base title="ArgoBeat — Audio Modulation and Evidence" description="How ArgoBeat uses target-rate audio modulation, and why effects vary across listeners.">
+  <Navbar currentPage="science" />
+
+  <main class="science-page">
+    <div class="persistent-player-route-host persistent-player-route-host--hidden" transition:persist aria-hidden="true">
+      <ArgoBeatPlayer />
+    </div>
+    <div class="science-header">
+      <h2>Audio Modulation and Evidence</h2>
+      <p>What ArgoBeat can measure in audio, and what it cannot promise about your brain</p>
+    </div>
+
+    <article id="entrainment" class="section">
+      <h3>What ArgoBeat Is Trying To Do</h3>
+      <p>
+        ArgoBeat creates listenable music and ambient sessions that include target-rate audio modulation. In practice, that means rendered sessions can be spot-checked for a rhythmic marker near the selected mood frequency, without claiming a guaranteed listener response.
+      </p>
+      <p>
+        Human EEG activity is often discussed in these broad bands:
+      </p>
+      <div class="band-list">
+        <div class="band-item" data-band="delta">
+          <div class="band-freq">0.5&ndash;4 Hz</div>
+          <div class="band-info">
+            <strong>Delta</strong>
+            <span>Deep sleep and very low arousal states</span>
+          </div>
+        </div>
+        <div class="band-item" data-band="theta">
+          <div class="band-freq">4&ndash;8 Hz</div>
+          <div class="band-info">
+            <strong>Theta</strong>
+            <span>Meditation, REM sleep, creativity, introspection</span>
+          </div>
+        </div>
+        <div class="band-item" data-band="alpha">
+          <div class="band-freq">8&ndash;14 Hz</div>
+          <div class="band-info">
+            <strong>Alpha</strong>
+            <span>Relaxed focus, calm alertness, light meditation</span>
+          </div>
+        </div>
+        <div class="band-item" data-band="beta">
+          <div class="band-freq">14&ndash;30 Hz</div>
+          <div class="band-info">
+            <strong>Beta</strong>
+            <span>Active thinking, problem-solving, concentration, engagement</span>
+          </div>
+        </div>
+        <div class="band-item" data-band="gamma">
+          <div class="band-freq">30&ndash;100 Hz</div>
+          <div class="band-info">
+            <strong>Gamma</strong>
+            <span>High-frequency activity associated with some attention and perception tasks</span>
+          </div>
+        </div>
+      </div>
+      <p>
+        Some auditory-beat studies report effects on cognition, anxiety, pain, or EEG measures, but the evidence is mixed and individual response varies. ArgoBeat should be treated as a focus/relaxation audio tool, not a medical or therapeutic device.
+      </p>
+    </article>
+
+    <article class="section">
+          <h3>Classic Beats vs. ArgoBeat's Current Approach</h3>
+      <div class="comparison-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Binaural Beats</th>
+              <th>Target-Rate Audio Modulation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>How it works</strong></td>
+              <td>Two slightly different frequencies in each ear create a phantom beat frequency</td>
+              <td>Ambience is modulated directly, while music stays mostly clean with a lighter target-rate amplitude layer</td>
+            </tr>
+            <tr>
+              <td><strong>Headphones</strong></td>
+              <td>Required (must separate L/R channels)</td>
+              <td>Optional, though headphones can reveal stereo modulation more clearly</td>
+            </tr>
+            <tr>
+              <td><strong>Sensation</strong></td>
+              <td>Subtle and listener-dependent</td>
+              <td>Designed to stay listenable instead of sounding like test tones</td>
+            </tr>
+            <tr>
+              <td><strong>Research</strong></td>
+              <td>Studied, but findings are not uniform</td>
+              <td>Product QA verifies audio markers, not guaranteed brain response</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>Headphone-based experiments and personal routines</td>
+              <td>Everyday listening where musicality matters</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <em>ArgoBeat prioritizes listenable sessions first, then verifies target-rate markers in exported audio.</em>
+      </p>
+    </article>
+
+    <article class="section">
+      <h3>How ArgoBeat Generates Audio</h3>
+      <div class="diagram">
+        <div class="diagram-row">
+          <div class="diagram-node source">Curated Music</div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node process">Gain + light AM</div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node output">Master Output</div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node source">Ambient Recordings</div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node process">Wet/Dry Modulation Blend</div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node output">Compressor</div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node source">Session Metadata</div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node process">Export QA</div>
+          <div class="diagram-arrow">&rarr;</div>
+          <div class="diagram-node output">Audio Marker Report</div>
+        </div>
+      </div>
+      <p>
+        Everything runs in your browser's Web Audio API. Current sessions use curated music and ambient recordings, keep the music layer mostly clean, and apply most target-rate motion on the ambience side through a user-controlled wet/dry blend, plus compression and analysis on the final mix.
+      </p>
+    </article>
+
+    <article id="research" class="section">
+      <h3>Research &amp; Citations</h3>
+      <h4>Key Studies</h4>
+      <ul class="citations">
+        <li>
+          <strong>Wahbeh, H., Calabrese, C., &amp; Zwickey, H. (2007)</strong>
+          <span class="citation-title">"Binaural beat technology in humans: a pilot study to assess psychologic and physiologic effects."</span>
+          <em>Journal of Alternative and Complementary Medicine, 13(1), 25-32.</em>
+        </li>
+        <li>
+          <strong>Jirakittayakorn, N., &amp; Wongsawat, Y. (2017)</strong>
+          <span class="citation-title">"Brain responses to a 6-Hz binaural beat: effects on general theta rhythm and frontal midline theta activity."</span>
+          <em>Frontiers in Neuroscience, 11, 365.</em>
+        </li>
+        <li>
+          <strong>Becher, A. K., et al. (2015)</strong>
+          <span class="citation-title">"Intracranial electroencephalography power and phase synchronization changes during monaural and binaural beat stimulation."</span>
+          <em>European Journal of Neuroscience, 41(2), 254-263.</em>
+        </li>
+        <li>
+          <strong>Garcia-Argibay, M., Santed, M. A., &amp; Reales, J. M. (2019)</strong>
+          <span class="citation-title">"Efficacy of binaural auditory beats in cognition, anxiety, and pain perception: a meta-analysis."</span>
+          <em>Psychological Research, 83(2), 357-372.</em>
+        </li>
+        <li>
+          <strong>Chaieb, L., Wilpert, E. C., Reber, T. P., &amp; Fell, J. (2015)</strong>
+          <span class="citation-title">"Auditory beat stimulation and its effects on cognition and mood states."</span>
+          <em>Frontiers in Psychiatry, 6, 70.</em>
+        </li>
+        <li>
+          <strong>Jespersen, K. V., Pando-Naude, V., Koenig, J., Jennum, P., &amp; Vuust, P. (2022)</strong>
+          <span class="citation-title">"Listening to music for insomnia in adults."</span>
+          <em>Cochrane Database of Systematic Reviews, Issue 8.</em>
+        </li>
+        <li>
+          <strong>Goldsby, T. L., Goldsby, M. E., McWalters, M., &amp; Mills, P. J. (2017)</strong>
+          <span class="citation-title">"Effects of singing bowl sound meditation on mood, tension, and well-being."</span>
+          <em>Journal of Evidence-Based Complementary &amp; Alternative Medicine, 22(3), 401-406.</em>
+        </li>
+      </ul>
+      <p>
+        These papers informed the choice of broad audio target ranges and low-arousal content palettes, but ArgoBeat does not treat them as proof that any session will change EEG activity, mood, sleep, or performance for a specific listener.
+      </p>
+    </article>
+
+    <article class="section">
+      <h3>Current Mood Targets</h3>
+      <div class="freq-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Mood</th>
+              <th>Band</th>
+              <th>Target Range</th>
+              <th>Default</th>
+              <th>Content Bias</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Focus</td>
+              <td>Beta</td>
+              <td>12&ndash;18 Hz</td>
+              <td>15 Hz</td>
+              <td>Music first, with rain, rivers, coast, forest, and selected storm beds as optional support</td>
+            </tr>
+            <tr>
+              <td>Deep Work</td>
+              <td>Beta</td>
+              <td>16&ndash;20 Hz</td>
+              <td>18 Hz</td>
+              <td>Steadier music ordering, lower ambience weight, and a broader mix across rain, ocean, forest, streams, and selected space textures</td>
+            </tr>
+            <tr>
+              <td>Relax</td>
+              <td>Alpha</td>
+              <td>8&ndash;12 Hz</td>
+              <td>10 Hz</td>
+              <td>Ocean, forest, fire, wind, and gentler music tracks</td>
+            </tr>
+            <tr>
+              <td>Meditate</td>
+              <td>Theta</td>
+              <td>4&ndash;7 Hz</td>
+              <td>6 Hz</td>
+              <td>Bowls and gongs are current auto content, with selective resonant drone/space and gentle stream textures as secondary support</td>
+            </tr>
+            <tr>
+              <td>Sleep</td>
+              <td>Delta</td>
+              <td>0.5&ndash;3.5 Hz</td>
+              <td>2 Hz</td>
+              <td>Ocean and rain only by default; modulation stays extremely light so the session remains low-arousal, and cafe/thunder/fire stay opt-in</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The export analyzer can spot-check whether a recording contains an audio marker near the selected target. That is QA for the audio file, not a clinical claim about listener response.
+      </p>
+      <p>
+        The deployable nature catalog is broader than just water loops: current beds include coast birds, forest birds and branches, night crickets/cicadas, rivers and streams, rain, gongs, and singing bowls. Jungle content exists in the broader catalog, but not every branch or deployment ships the same subset.
+      </p>
+    </article>
+
+    <article id="free" class="section">
+      <h3>Why ArgoBeat is Free</h3>
+      <p>
+        Unlike services that synthesize every session on paid servers, ArgoBeat plays curated static audio files and applies lightweight modulation directly in your browser using the Web Audio API.
+      </p>
+      <div class="cost-grid">
+        <div class="cost-item">
+          <div class="cost-value">$0</div>
+          <div class="cost-label">Server-side synthesis</div>
+          <div class="cost-detail">No per-listen synthesis jobs - curated audio assets are reused at playback time</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-value">$0</div>
+          <div class="cost-label">Server compute</div>
+          <div class="cost-detail">Playback shaping runs in the browser via Web Audio API, not on a per-listen compute backend</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-value">$0</div>
+          <div class="cost-label">Databases or accounts</div>
+          <div class="cost-detail">No sign-up or server-side user accounts; preferences stay in local browser storage</div>
+        </div>
+        <div class="cost-item infinite-scale">
+          <div class="cost-value">Low</div>
+          <div class="cost-label">Incremental cost</div>
+          <div class="cost-detail">Hosting and audio delivery still cost something, but reuse keeps marginal playback cost low</div>
+        </div>
+      </div>
+      <p>
+        ArgoBeat is hosted on Cloudflare Pages and serves audio from Cloudflare-hosted storage/edge delivery. Reusing curated tracks and soundscapes keeps runtime cost low while still allowing a broad catalog.
+      </p>
+    </article>
+
+    <article class="section cta-section">
+      <h3>Ready to Try It?</h3>
+      <p>No signup. No email. Just music-first audio with subtle target-rate modulation.</p>
+      <a href="/app" class="cta-button">Launch ArgoBeat</a>
+    </article>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 ArgoBeat. Open source.</p>
+  </footer>
+</Base>
+
+<style>
+  .science-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  .persistent-player-route-host--hidden {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .science-header {
+    text-align: center;
+    margin-bottom: 80px;
+  }
+
+  .science-header h2 {
+    font-size: 40px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #e0e7ff, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .science-header p {
+    font-size: 18px;
+    color: var(--color-text-secondary);
+  }
+
+  .section {
+    margin-bottom: 64px;
+  }
+
+  .section h3 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--color-text-primary);
+  }
+
+  .section h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 24px 0 16px 0;
+    color: var(--color-text-primary);
+  }
+
+  .section p {
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+
+  /* Brainwave Band List */
+  .band-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .band-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--color-bg-glass);
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-md);
+    transition: border-color 0.2s;
+  }
+
+  .band-item:hover {
+    border-color: var(--color-accent-glow);
+  }
+
+  .band-item[data-band="delta"] .band-freq { color: #818cf8; }
+  .band-item[data-band="theta"] .band-freq { color: #a78bfa; }
+  .band-item[data-band="alpha"] .band-freq { color: #6366f1; }
+  .band-item[data-band="beta"] .band-freq { color: #8b5cf6; }
+  .band-item[data-band="gamma"] .band-freq { color: #c084fc; }
+
+  .band-freq {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+
+  .band-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .band-info strong {
+    font-size: 15px;
+    color: var(--color-text-primary);
+  }
+
+  .band-info span {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+
+  /* Comparison Table */
+  .comparison-table,
+  .freq-table {
+    overflow-x: auto;
+    margin: 24px 0;
+    border-radius: var(--radius-md);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-bg-glass);
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  th,
+  td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-glass);
+  }
+
+  th {
+    background: rgba(99, 102, 241, 0.1);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  td {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  td strong {
+    color: var(--color-text-primary);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+  }
+
+  /* Audio Diagram */
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 24px 0;
+    padding: 24px;
+    background: var(--color-bg-glass);
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+  }
+
+  .diagram-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+  }
+
+  .diagram-node {
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .diagram-node.source {
+    background: rgba(99, 102, 241, 0.15);
+    color: #c7d2fe;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+
+  .diagram-node.process {
+    background: rgba(139, 92, 246, 0.15);
+    color: #ddd6fe;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
+
+  .diagram-node.output {
+    background: rgba(34, 197, 94, 0.15);
+    color: #bbf7d0;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  .diagram-arrow {
+    color: var(--color-text-secondary);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Citations */
+  .citations {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+  }
+
+  .citations li {
+    margin-bottom: 20px;
+    padding-left: 16px;
+    border-left: 3px solid var(--color-accent);
+    line-height: 1.7;
+  }
+
+  .citations li strong {
+    display: block;
+    color: var(--color-text-primary);
+    font-size: 15px;
+  }
+
+  .citation-title {
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    margin: 4px 0;
+  }
+
+  .citations li em {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+  }
+
+  /* Cost Grid */
+  .cost-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin: 32px 0;
+  }
+
+  .cost-item {
+    text-align: center;
+    padding: 24px 16px;
+    background: var(--color-bg-glass);
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-md);
+    transition: border-color 0.2s;
+  }
+
+  .cost-item:hover {
+    border-color: var(--color-accent-glow);
+  }
+
+  .cost-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--color-accent);
+    margin-bottom: 8px;
+  }
+
+  .cost-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+  }
+
+  .cost-detail {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+  }
+
+  /* CTA Section */
+  .cta-section {
+    text-align: center;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 48px;
+    border-radius: var(--radius-lg);
+  }
+
+  .cta-section h3 {
+    margin-bottom: 16px;
+  }
+
+  .cta-section p {
+    margin-bottom: 24px;
+  }
+
+  .cta-button {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+    color: white;
+    padding: 16px 32px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 16px;
+    transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 14px var(--color-accent-glow);
+  }
+
+  .cta-button:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--color-accent-glow);
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 40px;
+    border-top: 1px solid var(--color-border-glass);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .science-page {
+      padding: 40px 20px;
+    }
+
+    .science-header {
+      margin-bottom: 48px;
+    }
+
+    .science-header h2 {
+      font-size: 28px;
+    }
+
+    .science-header p {
+      font-size: 16px;
+    }
+
+    .section h3 {
+      font-size: 22px;
+    }
+
+    .band-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .band-freq {
+      min-width: unset;
+    }
+
+    .cost-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .diagram-row {
+      flex-wrap: wrap;
+    }
+
+    .cta-section {
+      padding: 32px 20px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .cost-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .science-page {
+      padding: 32px 16px;
+    }
+  }
+</style>

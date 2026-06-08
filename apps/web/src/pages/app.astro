@@ -1,0 +1,170 @@
+---
+import Base from '../layouts/Base.astro';
+import Navbar from '../components/layout/Navbar.astro';
+import ArgoBeatPlayer from '../components/player/ArgoBeatPlayer.astro';
+---
+
+<Base title="ArgoBeat — Focus, Sleep, and Meditation Audio" description="Music-first focus, relaxation, and sleep audio with subtle target-rate modulation. Choose a mood and start listening.">
+  <Navbar currentPage="app" />
+  <main class="app-page">
+    <div class="app-stack">
+      <div class="version-switch" aria-label="App version">
+        <span>v0.2.0</span>
+        <a href="/v0.1.0" onclick="return confirmVersionSwitch(event, 'v0.1.0')">v0.1.0</a>
+      </div>
+      <div class="persistent-player-route-host">
+        <ArgoBeatPlayer />
+      </div>
+    </div>
+  </main>
+  <script is:inline>
+    function confirmVersionSwitch(e, target) {
+      // Stop the active engine BEFORE the ClientRouter view-transition
+      // swaps the DOM. Without this, the AudioContext survives the client-side
+      // navigation and audio plays silently underneath the new page.
+      var active = window.__argobeatEngine;
+      if (active) {
+        active.stop();
+        active.destroy();
+      }
+      window.__argobeatEngine = null;
+
+      try {
+        // Persist engine playback state so the other version can restore it
+        const engineState = {
+          isPlaying: false,
+          mood: 'focus',
+          source: 'music',
+        };
+        try {
+          const stored = localStorage.getItem('argobeat-engine-state');
+          if (stored) Object.assign(engineState, JSON.parse(stored));
+        } catch {}
+        const state = {
+          version: target,
+          timestamp: Date.now(),
+          path: window.location.pathname,
+          engine: engineState,
+        };
+        localStorage.setItem('argobeat_pending_switch', JSON.stringify(state));
+      } catch (_) {}
+      return true;
+    }
+    (function() {
+      try {
+        const pending = localStorage.getItem('argobeat_pending_switch');
+        if (pending) {
+          const data = JSON.parse(pending);
+          localStorage.removeItem('argobeat_pending_switch');
+          // If the landed page doesn't match the pending version, redirect
+          const isOnTarget =
+            (data.version === 'v0.2.0' && window.location.pathname === '/app') ||
+            (data.version === 'v0.1.0' && window.location.pathname === '/v0.1.0');
+          if (!isOnTarget) {
+            window.location.href = data.version === 'v0.2.0' ? '/app' : '/v0.1.0';
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
+</Base>
+
+<style>
+  .app-page {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 20px 8px;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 100%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
+      var(--color-bg-primary);
+  }
+
+  .app-stack {
+    width: min(100%, 820px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .version-switch {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.52);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    max-width: calc(100vw - 20px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .version-switch::-webkit-scrollbar {
+    display: none;
+  }
+
+  .version-switch span,
+  .version-switch a {
+    padding: 4px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .version-switch > span:first-child {
+    color: var(--color-text-primary);
+    background: rgba(99, 102, 241, 0.16);
+  }
+
+  .version-switch a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .version-switch a:hover {
+    color: var(--color-text-primary);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .persistent-player-route-host {
+    display: flex;
+    justify-content: center;
+    padding: 0 20px 0;
+    margin-top: 0;
+  }
+
+  @media (max-width: 640px) {
+    .app-page {
+      padding: 6px 0 0;
+      align-items: flex-start;
+    }
+
+    .app-stack {
+      width: 100%;
+      gap: 6px;
+    }
+
+    .version-switch {
+      font-size: 10px;
+      padding: 3px;
+    }
+
+    .version-switch span,
+    .version-switch a {
+      padding: 3px 8px;
+    }
+
+    .persistent-player-route-host {
+      width: 100%;
+      padding: 0;
+      margin-top: 0;
+    }
+  }
+</style>

@@ -1,0 +1,189 @@
+---
+/**
+ * VolumeControls — master volume slider.
+ *
+ * Dispatches `argobeat-volume-change` events for the player to apply.
+ * Persists last-used value in localStorage.
+ */
+---
+
+<div class="volume-controls">
+  <div class="volume-group">
+    <div class="volume-header">
+      <label for="master-volume">Volume</label>
+      <span class="volume-value" id="master-value">80%</span>
+    </div>
+    <input
+      type="range"
+      id="master-volume"
+      min="0"
+      max="100"
+      value="80"
+      class="slider"
+      aria-label="Volume"
+    />
+  </div>
+</div>
+
+<script>
+  const masterSlider = document.getElementById('master-volume') as HTMLInputElement;
+  const masterValue = document.getElementById('master-value')!;
+
+  function safeStorageGet(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorageSet(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  const savedMaster = safeStorageGet('argobeat-vol-master');
+  if (savedMaster) masterSlider.value = savedMaster;
+
+  function updateDisplay() {
+    masterValue.textContent = `${masterSlider.value}%`;
+    masterSlider.style.setProperty('--volume-percent', `${masterSlider.value}%`);
+  }
+
+  function dispatchVolumes() {
+    window.dispatchEvent(
+      new CustomEvent('argobeat-volume-change', {
+        detail: {
+          master: Number(masterSlider.value) / 100,
+        },
+      })
+    );
+    safeStorageSet('argobeat-vol-master', masterSlider.value);
+  }
+
+  function handleInput() {
+    updateDisplay();
+    dispatchVolumes();
+  }
+
+  masterSlider.addEventListener('input', handleInput);
+  updateDisplay();
+</script>
+
+<style>
+  .volume-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 12px 14px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+  }
+
+  .volume-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .volume-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .volume-value {
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .slider {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background:
+      linear-gradient(
+        90deg,
+        var(--color-accent) 0%,
+        color-mix(in srgb, var(--color-accent-light) 72%, white) var(--volume-percent, 80%),
+        rgba(255, 255, 255, 0.08) var(--volume-percent, 80%),
+        rgba(255, 255, 255, 0.08) 100%
+      );
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+
+  .slider:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+    border-radius: 999px;
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: 2px solid var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16), 0 0 12px var(--color-accent-glow);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 0 16px var(--color-accent-glow);
+  }
+
+  .slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: 2px solid var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16), 0 0 12px var(--color-accent-glow);
+  }
+
+  .slider::-webkit-slider-runnable-track {
+    height: 10px;
+    border-radius: 999px;
+  }
+
+  .slider::-moz-range-track {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  @media (max-width: 640px) {
+    .volume-controls {
+      padding: 11px 12px 13px;
+    }
+
+    .volume-value {
+      font-size: 15px;
+    }
+  }
+</style>

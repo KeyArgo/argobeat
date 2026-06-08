@@ -1,0 +1,451 @@
+---
+import Base from '../layouts/Base.astro';
+import Navbar from '../components/layout/Navbar.astro';
+---
+
+<Base title="ArgoBeat Private Dashboard" description="Private development dashboard for sessions, evaluations, recommendations, and analysis runs.">
+  <Navbar currentPage="private" />
+  <main class="private-page">
+    <section class="private-shell">
+      <header class="private-header">
+        <div>
+          <p class="private-kicker">Private Dev</p>
+          <h1>ArgoBeat Session Dashboard</h1>
+          <p class="private-subtitle">Recent sessions, evaluations, recommendations, and analysis runs. Manual analysis is wired here for operator review.</p>
+        </div>
+      </header>
+
+      <section class="filters-card">
+        <label>
+          Mood
+          <select id="filter-mood">
+            <option value="">All</option>
+            <option value="focus">Focus</option>
+            <option value="deepWork">Deep Work</option>
+            <option value="relax">Relax</option>
+            <option value="meditate">Meditate</option>
+            <option value="sleep">Sleep</option>
+          </select>
+        </label>
+        <label>
+          Date From
+          <input id="filter-date-from" type="date" />
+        </label>
+        <label>
+          Date To
+          <input id="filter-date-to" type="date" />
+        </label>
+        <label>
+          Score Threshold
+          <select id="filter-score">
+            <option value="">Any</option>
+            <option value="5">5+</option>
+            <option value="6">6+</option>
+            <option value="7">7+</option>
+            <option value="8">8+</option>
+          </select>
+        </label>
+        <label>
+          Trigger
+          <select id="filter-trigger">
+            <option value="">Any</option>
+            <option value="manual">Manual</option>
+            <option value="auto-tune">Auto-Tune</option>
+            <option value="advisor">Advisor</option>
+          </select>
+        </label>
+        <button id="refresh-dashboard" class="action-btn" type="button">Refresh</button>
+      </section>
+
+      <div class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Sessions</h2>
+            <span id="sessions-count" class="panel-count">0</span>
+          </div>
+          <div id="sessions-state" class="panel-state">Loading…</div>
+          <div id="sessions-table"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Evaluations</h2>
+            <span id="evaluations-count" class="panel-count">0</span>
+          </div>
+          <div id="evaluations-state" class="panel-state">Loading…</div>
+          <div id="evaluations-table"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Recommendations</h2>
+            <span id="recommendations-count" class="panel-count">0</span>
+          </div>
+          <div id="recommendations-state" class="panel-state">Loading…</div>
+          <div id="recommendations-table"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Analysis Runs</h2>
+            <span id="analysis-runs-count" class="panel-count">0</span>
+          </div>
+          <div id="analysis-runs-state" class="panel-state">Loading…</div>
+          <div id="analysis-runs-table"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const ENDPOINTS = {
+      sessions: '/api/audio-analyze/sessions',
+      evaluations: '/api/audio-analyze/history',
+      recommendations: '/api/audio-analyze/recommendations',
+      analysisRuns: '/api/audio-analyze/analysis-runs',
+      runAnalysis: '/api/audio-analyze/run-analysis',
+    };
+
+    const mood = document.getElementById('filter-mood');
+    const dateFrom = document.getElementById('filter-date-from');
+    const dateTo = document.getElementById('filter-date-to');
+    const score = document.getElementById('filter-score');
+    const trigger = document.getElementById('filter-trigger');
+    const refreshBtn = document.getElementById('refresh-dashboard');
+
+    function buildQuery() {
+      const params = new URLSearchParams();
+      if (mood.value) params.set('mood', mood.value);
+      if (dateFrom.value) params.set('dateFrom', dateFrom.value);
+      if (dateTo.value) params.set('dateTo', dateTo.value);
+      if (score.value) params.set('scoreThreshold', score.value);
+      if (trigger.value) params.set('trigger', trigger.value);
+      params.set('limit', '40');
+      return params.toString();
+    }
+
+    function setState(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function setCount(id, count) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(count);
+    }
+
+    function fmtDate(value) {
+      if (!value) return '—';
+      return new Date(Number(value)).toLocaleString();
+    }
+
+    function fmtDuration(ms) {
+      if (!ms) return '—';
+      const minutes = Math.round(ms / 60000);
+      return `${minutes}m`;
+    }
+
+    function safePayload(payload) {
+      if (!payload) return '';
+      if (typeof payload === 'string') {
+        try { return JSON.stringify(JSON.parse(payload)); } catch { return payload; }
+      }
+      return JSON.stringify(payload);
+    }
+
+    function renderTable(targetId, headers, rowsHtml) {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      if (!rowsHtml.length) {
+        target.innerHTML = '<div class="empty-state">No rows yet.</div>';
+        return;
+      }
+      target.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr>
+            </thead>
+            <tbody>${rowsHtml.join('')}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      return res.json();
+    }
+
+    async function loadSessions(query) {
+      const data = await fetchJson(`${ENDPOINTS.sessions}?${query}`);
+      setCount('sessions-count', data.count ?? 0);
+      setState('sessions-state', data.count ? '' : 'No sessions in range.');
+      renderTable('sessions-table', ['Started', 'Ended', 'Mood', 'Source', 'Track', 'Soundscape', 'Status', 'Duration', 'Action'], (data.sessions ?? []).map((session) => `
+        <tr>
+          <td>${fmtDate(session.started_at)}</td>
+          <td>${fmtDate(session.ended_at)}</td>
+          <td>${session.mood ?? '—'}</td>
+          <td>${session.source ?? '—'}</td>
+          <td>${session.initial_track ?? '—'}</td>
+          <td>${session.initial_soundscape ?? '—'}</td>
+          <td>${session.status ?? '—'}</td>
+          <td>${fmtDuration(session.duration_ms)}</td>
+          <td><button class="tiny-btn run-analysis-btn" data-session-id="${session.id}">Run analysis</button></td>
+        </tr>
+      `));
+    }
+
+    async function loadEvaluations(query) {
+      const data = await fetchJson(`${ENDPOINTS.evaluations}?${query}`);
+      setCount('evaluations-count', data.count ?? 0);
+      setState('evaluations-state', data.count ? '' : 'No evaluations in range.');
+      renderTable('evaluations-table', ['When', 'Mood', 'Score', 'Provider', 'Trigger', 'Top Priority'], (data.evaluations ?? []).map((evaluation) => `
+        <tr>
+          <td>${fmtDate(evaluation.ts)}</td>
+          <td>${evaluation.mood ?? '—'}</td>
+          <td>${typeof evaluation.score === 'number' ? evaluation.score.toFixed(1) : '—'}</td>
+          <td>${evaluation.ai_provider ?? '—'}</td>
+          <td>${evaluation.triggered ?? '—'}</td>
+          <td>${evaluation.ai_priority ?? '—'}</td>
+        </tr>
+      `));
+    }
+
+    async function loadRecommendations(query) {
+      const data = await fetchJson(`${ENDPOINTS.recommendations}?${query}`);
+      setCount('recommendations-count', data.count ?? 0);
+      setState('recommendations-state', data.count ? '' : 'No recommendations in range.');
+      renderTable('recommendations-table', ['Created', 'Source', 'Applied', 'Mood', 'Trigger', 'Kind', 'Payload'], (data.recommendations ?? []).map((recommendation) => `
+        <tr>
+          <td>${fmtDate(recommendation.created_at)}</td>
+          <td>${recommendation.source ?? '—'}</td>
+          <td>${recommendation.applied ? 'Yes' : 'No'}</td>
+          <td>${recommendation.mood ?? '—'}</td>
+          <td>${recommendation.triggered ?? '—'}</td>
+          <td>${recommendation.kind ?? '—'}</td>
+          <td><code>${safePayload(recommendation.payload_json)}</code></td>
+        </tr>
+      `));
+    }
+
+    async function loadAnalysisRuns(query) {
+      const data = await fetchJson(`${ENDPOINTS.analysisRuns}?${query}`);
+      setCount('analysis-runs-count', data.count ?? 0);
+      setState('analysis-runs-state', data.count ? '' : 'No analysis runs in range.');
+      renderTable('analysis-runs-table', ['Created', 'Mood', 'Status', 'Provider', 'Trigger', 'Score', 'Top Priority'], (data.analysisRuns ?? []).map((run) => `
+        <tr>
+          <td>${fmtDate(run.created_at)}</td>
+          <td>${run.mood ?? '—'}</td>
+          <td>${run.status ?? '—'}</td>
+          <td>${run.provider ?? '—'}</td>
+          <td>${run.triggered ?? '—'}</td>
+          <td>${typeof run.score === 'number' ? run.score.toFixed(1) : '—'}</td>
+          <td>${run.top_priority ?? '—'}</td>
+        </tr>
+      `));
+    }
+
+    async function refreshDashboard() {
+      const query = buildQuery();
+      await Promise.all([
+        loadSessions(query),
+        loadEvaluations(query),
+        loadRecommendations(query),
+        loadAnalysisRuns(query),
+      ]);
+    }
+
+    document.addEventListener('click', async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('run-analysis-btn')) return;
+      const sessionId = target.dataset.sessionId;
+      if (!sessionId) return;
+
+      target.setAttribute('disabled', 'true');
+      target.textContent = 'Running…';
+      try {
+        const res = await fetch(ENDPOINTS.runAnalysis, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, triggered: 'manual' }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        await refreshDashboard();
+      } catch (err) {
+        target.textContent = 'Failed';
+        console.error('[private-dashboard] run-analysis failed', err);
+      } finally {
+        target.removeAttribute('disabled');
+        target.textContent = 'Run analysis';
+      }
+    });
+
+    refreshBtn?.addEventListener('click', () => {
+      refreshDashboard().catch((err) => console.error('[private-dashboard]', err));
+    });
+
+    refreshDashboard().catch((err) => {
+      console.error('[private-dashboard]', err);
+      setState('sessions-state', 'Failed to load dashboard data.');
+      setState('evaluations-state', 'Failed to load dashboard data.');
+      setState('recommendations-state', 'Failed to load dashboard data.');
+      setState('analysis-runs-state', 'Failed to load dashboard data.');
+    });
+  </script>
+</Base>
+
+<style>
+  .private-page {
+    min-height: calc(100vh - 60px);
+    padding: 24px;
+    background: linear-gradient(180deg, rgba(12, 17, 29, 0.98), rgba(7, 10, 18, 1));
+  }
+
+  .private-shell {
+    max-width: 1380px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .private-header,
+  .filters-card,
+  .panel {
+    background: rgba(10, 14, 25, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 18px;
+    padding: 18px 20px;
+  }
+
+  .private-kicker {
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    color: #7dd3fc;
+  }
+
+  .private-header h1 {
+    margin: 0;
+    font-size: 30px;
+  }
+
+  .private-subtitle {
+    margin: 8px 0 0;
+    color: #94a3b8;
+    max-width: 820px;
+  }
+
+  .filters-card {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+  }
+
+  .filters-card label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  .filters-card select,
+  .filters-card input {
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.85);
+    color: #e2e8f0;
+    padding: 10px 12px;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .panel {
+    min-height: 280px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .panel-header h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .panel-count,
+  .panel-state {
+    color: #94a3b8;
+    font-size: 12px;
+  }
+
+  .table-wrap {
+    overflow: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    vertical-align: top;
+  }
+
+  th {
+    color: #94a3b8;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  td code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #cbd5e1;
+  }
+
+  .action-btn,
+  .tiny-btn {
+    border: 1px solid rgba(125, 211, 252, 0.25);
+    background: rgba(14, 116, 144, 0.15);
+    color: #bae6fd;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .tiny-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .empty-state {
+    padding: 18px 0;
+    color: #64748b;
+  }
+
+  @media (max-width: 980px) {
+    .filters-card,
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

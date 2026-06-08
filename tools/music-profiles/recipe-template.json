@@ -1,0 +1,49 @@
+{
+  "recipe_id": "REPLACE-CATEGORY-INSTRUMENT-BPM-seedSEED",
+  "category": "REPLACE: focus|deep-work|relax|meditate|sleep",
+  "created": "2026-06-06T00:00:00Z",
+  "source": {
+    "nature_layers": [],
+    "drone_source": "",
+    "instrument": ""
+  },
+  "generation": {
+    "engine": "ace-step",
+    "prompt": "",
+    "lyrics": "[inst]",
+    "bpm": 0,
+    "seed": 0,
+    "audio_duration": 30,
+    "infer_step": 60,
+    "guidance_scale": 12.0,
+    "scheduler_type": "euler",
+    "cfg_type": "apg",
+    "omega_scale": 10.0,
+    "use_erg_tag": true,
+    "use_erg_lyric": false,
+    "use_erg_diffusion": true
+  },
+  "post_processing": {
+    "steps": [
+      {"name": "normalize-headroom", "filter": "loudnorm=I=-6:TP=-1:LRA=11"},
+      {"name": "lowpass", "filter": "lowpass=f=1500"},
+      {"name": "compress", "filter": "compand=attacks=0.3:decays=0.8:points=-80/-80|-45/-45|-27/-25|0/-10"},
+      {"name": "limiter", "filter": "alimiter=level_in=1:level_out=0.9:limit=0.9:attack=0.1:release=50"},
+      {"name": "final-normalize", "filter": "loudnorm=I=-16:TP=-1:LRA=11"}
+    ],
+    "target_lufs": -16,
+    "target_true_peak": -1
+  },
+  "output": {
+    "filename": "",
+    "format": "wav",
+    "duration_seconds": 30,
+    "sample_rate": 44100
+  },
+  "listening": {
+    "comfort_50_75": null,
+    "no_harshness": null,
+    "category_match": null,
+    "notes": ""
+  }
+}

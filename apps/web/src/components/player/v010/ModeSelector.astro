@@ -1,0 +1,281 @@
+---
+/**
+ * MoodSelector — 5 mood cards in a responsive grid.
+ *
+ * Renders mood cards with gradient backgrounds, descriptions, and session
+ * times. No Hz values visible to users. Dispatches `argobeat-mood-select`
+ * custom events on selection.
+ *
+ * Mood data is hardcoded at build time to match @argobeat/engine moods.
+ */
+
+interface MoodCard {
+  id: string;
+  label: string;
+  description: string;
+  sessionMinutes: number;
+  gradient: [string, string];
+  glow: string;
+  icon: string;
+}
+
+const moods: MoodCard[] = [
+  {
+    id: 'focus',
+    label: 'Focus',
+    description: 'Sharp concentration for reading, coding, and detail work',
+    sessionMinutes: 25,
+    gradient: ['#3b82f6', '#1d4ed8'],
+    glow: 'rgba(59, 130, 246, 0.35)',
+    icon: '&#9678;',
+  },
+  {
+    id: 'deepWork',
+    label: 'Deep Work',
+    description: 'Sustained flow for complex creative and engineering sessions',
+    sessionMinutes: 90,
+    gradient: ['#6366f1', '#4338ca'],
+    glow: 'rgba(99, 102, 241, 0.35)',
+    icon: '&#9830;',
+  },
+  {
+    id: 'relax',
+    label: 'Relax',
+    description: 'Gentle calm for unwinding and decompression',
+    sessionMinutes: 20,
+    gradient: ['#10b981', '#059669'],
+    glow: 'rgba(16, 185, 129, 0.35)',
+    icon: '&#9836;',
+  },
+  {
+    id: 'meditate',
+    label: 'Meditate',
+    description: 'Mindful stillness for breathwork and sitting practice',
+    sessionMinutes: 20,
+    gradient: ['#a855f7', '#7e22ce'],
+    glow: 'rgba(168, 85, 247, 0.35)',
+    icon: '&#10023;',
+  },
+  {
+    id: 'sleep',
+    label: 'Sleep',
+    description: 'Low-arousal audio for sleep onset and quiet rest',
+    sessionMinutes: 30,
+    gradient: ['#475569', '#1e293b'],
+    glow: 'rgba(71, 85, 105, 0.3)',
+    icon: '&#9790;',
+  },
+];
+---
+
+<div class="mood-selector">
+  <h2 class="mood-heading">Choose Your Mood</h2>
+  <div class="moods-grid" role="radiogroup" aria-label="Select session mood">
+    {moods.map((mood) => (
+      <button
+        class="mood-card"
+        data-mood={mood.id}
+        role="radio"
+        aria-checked="false"
+        aria-label={`${mood.label} — ${mood.description}. ${mood.sessionMinutes} minute session.`}
+        style={`--mood-from: ${mood.gradient[0]}; --mood-to: ${mood.gradient[1]}; --mood-glow: ${mood.glow};`}
+      >
+        <span class="mood-icon" aria-hidden="true" set:html={mood.icon} />
+        <span class="mood-label">{mood.label}</span>
+        <span class="mood-description">{mood.description}</span>
+        <span class="mood-duration">{mood.sessionMinutes} min</span>
+      </button>
+    ))}
+  </div>
+</div>
+
+<script>
+  const moodCards = document.querySelectorAll<HTMLButtonElement>('.mood-card');
+
+  function selectMood(card: HTMLButtonElement) {
+    // Deselect all
+    moodCards.forEach((c) => {
+      c.classList.remove('active');
+      c.setAttribute('aria-checked', 'false');
+    });
+
+    // Select this one
+    card.classList.add('active');
+    card.setAttribute('aria-checked', 'true');
+
+    // Dispatch mood selection event
+    window.dispatchEvent(
+      new CustomEvent('argobeat-mood-select', {
+        detail: { mood: card.dataset.mood },
+      })
+    );
+  }
+
+  moodCards.forEach((card) => {
+    card.addEventListener('click', () => selectMood(card));
+  });
+
+  // Default-select "focus" on load
+  const defaultCard = document.querySelector<HTMLButtonElement>('.mood-card[data-mood="focus"]');
+  if (defaultCard) {
+    defaultCard.classList.add('active');
+    defaultCard.setAttribute('aria-checked', 'true');
+  }
+</script>
+
+<style>
+  .mood-heading {
+    display: none;
+  }
+
+  .moods-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .mood-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 12px 10px 11px;
+    border-radius: var(--radius-lg);
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--color-text-secondary);
+    text-align: center;
+    overflow: hidden;
+
+    /* Glass base */
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--mood-from) 8%, transparent), color-mix(in srgb, var(--mood-to) 4%, transparent)),
+      rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(8px);
+  }
+
+  .mood-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    background: linear-gradient(135deg, var(--mood-from), var(--mood-to));
+    transition: opacity 0.3s ease;
+    z-index: 0;
+  }
+
+  .mood-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .mood-card:hover {
+    border-color: color-mix(in srgb, var(--mood-from) 40%, transparent);
+    color: var(--color-text-primary);
+    transform: translateY(-2px);
+  }
+
+  .mood-card:hover::before {
+    opacity: 0.12;
+  }
+
+  .mood-card:focus-visible {
+    outline: 2px solid var(--mood-from);
+    outline-offset: 3px;
+  }
+
+  .mood-card.active {
+    border-color: var(--mood-from);
+    color: #ffffff;
+    box-shadow:
+      0 0 24px var(--mood-glow),
+      0 8px 32px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .mood-card.active::before {
+    opacity: 0.25;
+  }
+
+  .mood-icon {
+    font-size: 18px;
+    line-height: 1;
+    opacity: 0.8;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+
+  .mood-card.active .mood-icon {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  .mood-label {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+  }
+
+  .mood-description {
+    font-size: 9px;
+    line-height: 1.18;
+    opacity: 0.7;
+    max-width: 140px;
+  }
+
+  .mood-card.active .mood-description {
+    opacity: 0.9;
+  }
+
+  .mood-duration {
+    font-size: 8px;
+    font-weight: 500;
+    opacity: 0.5;
+    margin-top: 2px;
+    padding: 2px 10px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .mood-card.active .mood-duration {
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Responsive: Desktop 5 cols, Tablet 3+2, Mobile 1 col */
+  @media (max-width: 1024px) {
+    .moods-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .moods-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .mood-card {
+      flex-direction: row;
+      padding: 16px 20px;
+      gap: 14px;
+      text-align: left;
+      align-items: flex-start;
+    }
+
+    .mood-icon {
+      font-size: 24px;
+      margin-top: 2px;
+    }
+
+    .mood-description {
+      max-width: none;
+    }
+
+    .mood-duration {
+      margin-top: 2px;
+    }
+  }
+</style>

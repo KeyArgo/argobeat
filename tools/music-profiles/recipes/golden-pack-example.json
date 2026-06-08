@@ -1,0 +1,49 @@
+{
+  "recipe_id": "focus-guitar-swells-120-seed42",
+  "category": "focus",
+  "created": "2026-06-06T00:00:00Z",
+  "source": {
+    "nature_layers": [],
+    "drone_source": "",
+    "instrument": "electric guitar swells, volume pedal, long reverb"
+  },
+  "generation": {
+    "engine": "ace-step",
+    "prompt": "ambient focus, 120 bpm, electric guitar swells, volume pedal, long reverb, minimal rhythm, dark, warm, motivating, low harshness, no vocals, instrumental, drone",
+    "lyrics": "[inst]",
+    "bpm": 120,
+    "seed": 42,
+    "audio_duration": 30,
+    "infer_step": 60,
+    "guidance_scale": 12.0,
+    "scheduler_type": "euler",
+    "cfg_type": "apg",
+    "omega_scale": 10.0,
+    "use_erg_tag": true,
+    "use_erg_lyric": false,
+    "use_erg_diffusion": true
+  },
+  "post_processing": {
+    "steps": [
+      {"name": "normalize-headroom", "filter": "loudnorm=I=-6:TP=-1:LRA=11"},
+      {"name": "lowpass", "filter": "lowpass=f=1500"},
+      {"name": "compress", "filter": "compand=attacks=0.3:decays=0.8:points=-80/-80|-45/-45|-27/-25|0/-10"},
+      {"name": "limiter", "filter": "alimiter=level_in=1:level_out=0.9:limit=0.9:attack=0.1:release=50"},
+      {"name": "final-normalize", "filter": "loudnorm=I=-16:TP=-1:LRA=11"}
+    ],
+    "target_lufs": -16,
+    "target_true_peak": -1
+  },
+  "output": {
+    "filename": "focus-guitar-swells-120-seed42.wav",
+    "format": "wav",
+    "duration_seconds": 30,
+    "sample_rate": 44100
+  },
+  "listening": {
+    "comfort_50_75": true,
+    "no_harshness": true,
+    "category_match": true,
+    "notes": "Golden pack candidate. Guitar swells with minimal rhythm, dark/warm."
+  }
+}

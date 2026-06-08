@@ -1,0 +1,2982 @@
+---
+/**
+ * ArgoBeatPlayer — main player orchestrator.
+ *
+ * Composes MoodSelector, WaveVisualizer, SessionTimer, and VolumeControls
+ * into a cohesive player interface. Imports and manages the ArgoBeatEngine
+ * lifecycle, routing events between the engine and child components.
+ *
+ * The engine is initialized lazily on first Play click (user gesture required
+ * for AudioContext) and emits state via window CustomEvents so all child
+ * components stay in sync without tight coupling.
+ */
+import MoodSelector from './ModeSelector.astro';
+import WaveVisualizer from './WaveVisualizer.astro';
+import SessionTimer from './SessionTimer.astro';
+import VolumeControls from './VolumeControls.astro';
+import AnalysisPanel from './AnalysisPanel.astro';
+
+/**
+ * Eligible soundscape categories per mood (build-time, matches engine affinities).
+ * Used to render the soundscape dropdown options.
+ */
+const soundscapeCategories = [
+  { value: 'noise', label: 'Brown noise / pink noise' },
+  { value: 'gongs', label: 'Gongs / singing bowls / chimes' },
+  { value: 'rain', label: 'Rain / weather' },
+  { value: 'ocean', label: 'Ocean / coast / whales' },
+  { value: 'birds', label: 'Birds / dawn chorus' },
+  { value: 'forest', label: 'Forest / insects / night' },
+  { value: 'jungle', label: 'Jungle / frogs / night' },
+  { value: 'stream', label: 'Rivers / streams / waterfall' },
+  { value: 'cave', label: 'Cave / resonance' },
+  { value: 'wind', label: 'Wind / breeze' },
+  { value: 'fire', label: 'Fire / fireplace' },
+  { value: 'thunder', label: 'Thunder / storms' },
+  { value: 'space', label: 'Space / drone' },
+  { value: 'cafe', label: 'Cafe / city' },
+];
+
+interface Props {
+  variant?: 'v2' | 'legacy';
+}
+
+const { variant = 'v2' } = Astro.props;
+const isLegacy = variant === 'legacy';
+---
+
+<div
+  class:list={['player-shell', { 'player-shell-legacy': isLegacy }]}
+  id="player-shell"
+  data-layout={isLegacy ? 'legacy' : 'desktop'}
+  data-version={variant}
+>
+  <!-- Mood Selection -->
+  <section class="player-section">
+    <MoodSelector variant={variant} />
+  </section>
+
+  <!-- Source Toggle + Soundscape Selector -->
+  <section class="player-section source-section" data-drawer="source-drawer">
+    <div class="source-row">
+      <button class="drawer-toggle" id="source-drawer-toggle" type="button"
+              aria-expanded="false" aria-controls="source-drawer-content"
+              style="display:none;">
+        <span class="drawer-toggle-icon">☰</span>
+        <span class="drawer-toggle-label">Source & Soundscape</span>
+        <span class="drawer-toggle-active-source" id="drawer-active-source"></span>
+        <span class="drawer-toggle-chevron">▾</span>
+      </button>
+      <div class="drawer-content" id="source-drawer-content">
+        <div class="source-toggle" role="tablist" aria-label="Audio source">
+        <button class="source-tab" role="tab" aria-selected="false" data-source="soundscape" id="tab-soundscapes" title="Real ambient recordings — rain, ocean, forest, and more">
+          Soundscapes
+        </button>
+        <button class="source-tab" role="tab" aria-selected="false" data-source="both" id="tab-both" title="Blended music + soundscape with independent volume">
+          Both
+        </button>
+        <button class="source-tab active" role="tab" aria-selected="true" data-source="music" id="tab-music" title="Curated music tracks with subtle target-rate modulation">
+          Music
+        </button>
+        <button class="source-tab" role="tab" aria-selected="false" data-source="generated" id="tab-generated" title="Infinite AI synthesis — no files, never repeats">
+          Generated
+        </button>
+        <button class="source-tab" role="tab" aria-selected="false" data-source="generated+soundscape" id="tab-generated-sc" title="AI-generated music blended with ambient soundscape">
+          Gen + Ambience
+        </button>
+      </div>
+      <div class="soundscape-picker">
+        <label for="soundscape-select" class="sr-only">Soundscape</label>
+        <select id="soundscape-select" aria-label="Select soundscape">
+          <option value="auto">Auto (broader nature mix for this mood)</option>
+          {soundscapeCategories.map((sc) => (
+            <option value={sc.value}>{sc.label}</option>
+          ))}
+        </select>
+        <div class="soundscape-helper">
+          Rotates across rain, ocean, rivers, trees, birds, crickets, and night-insect beds where the current catalog fits the selected mood.
+        </div>
+      </div>
+      <div class="boost-panel" id="boost-panel" hidden>
+        <button class="boost-chip" id="btn-boost" type="button" aria-pressed="false">
+          Sprint boost
+        </button>
+        <div class="boost-helper" id="boost-helper">
+          Adds a denser pulse and stronger ambient layer for focus and deep-work sessions. Works best with headphones. No medical claims.
+        </div>
+      </div>
+      <div class="modulation-panel" id="modulation-panel">
+        <div class="modulation-row">
+          <span class="modulation-label">Modulation</span>
+          <div class="mod-target-pills" role="group" aria-label="Modulation target">
+            <button class="mod-pill" data-target="off">Off</button>
+            <button class="mod-pill active" data-target="music">Music</button>
+            <button class="mod-pill" data-target="soundscape">Ambience</button>
+            <button class="mod-pill" data-target="both">Both</button>
+          </div>
+        </div>
+        <div class="modulation-row" id="mod-depth-row" style="display:none;">
+          <label class="modulation-label" for="modulation-depth">
+            Depth <span class="modulation-value" id="modulation-value">100%</span>
+          </label>
+          <input type="range" id="modulation-depth" min="0" max="150" value="100"
+            class="modulation-slider" aria-label="Modulation depth" />
+        </div>
+        <div class="boost-helper" id="mod-helper">
+          Rhythm pulsing at brainwave rate — science-backed for focus &amp; deep work. Alpha/theta/delta AM has limited evidence.
+        </div>
+      </div> <!-- end modulation-panel -->
+      </div> <!-- end drawer-content -->
+    </div> <!-- end source-row -->
+  </section>
+
+  <!-- Visualizer -->
+  <section class="player-section">
+    <WaveVisualizer />
+  </section>
+
+  <!-- Transport Controls -->
+  <section class="player-section controls-section">
+    <div class="transport-controls">
+      <button class="transport-btn stop-btn" id="btn-stop" disabled aria-label="Stop">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+      </button>
+      <button class="transport-btn play-btn" id="btn-play" aria-label="Play">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </button>
+      <button class="transport-btn pause-btn" id="btn-pause" disabled aria-label="Pause">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+        </svg>
+      </button>
+      <button class="transport-btn skip-btn" id="btn-skip" disabled aria-label="Skip to next track or soundscape">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 5v14l9-7-9-7z" fill="currentColor" stroke="none" />
+          <path d="M17 5v14" />
+        </svg>
+      </button>
+    </div>
+    <div class="status-line" id="status-line">Select a mood and press play</div>
+    <div class="mod-indicator" id="mod-indicator" hidden>
+      <span class="mod-dot" id="mod-dot"></span>
+      <span class="mod-hz" id="mod-hz"></span>
+    </div>
+    <div class="track-meta" id="track-meta"></div>
+    <!-- Track card — expands when playing -->
+    <div class="track-card" id="track-card" style="display:none;">
+      <div class="track-card-header" id="track-card-toggle">
+        <div class="track-card-title-row">
+          <span class="track-card-name" id="tc-name"></span>
+          <span class="track-card-neural" id="tc-neural"></span>
+        </div>
+        <span class="track-card-genre" id="tc-genre"></span>
+        <span class="track-card-chevron" id="tc-chevron">▾</span>
+      </div>
+      <div class="track-card-body" id="track-card-body" style="display:none;">
+        <div class="tc-row"><span class="tc-label">Mental State</span><span class="tc-value" id="tc-state"></span></div>
+        <div class="tc-row"><span class="tc-label">Activity</span><span class="tc-value" id="tc-activity"></span></div>
+        <div class="tc-row"><span class="tc-label">Moods</span><span class="tc-value tc-tags" id="tc-moods"></span></div>
+        <div class="tc-row"><span class="tc-label">Instrumentation</span><span class="tc-value tc-tags" id="tc-instruments"></span></div>
+        <div class="tc-row tc-row-inline">
+          <span><span class="tc-label">Complexity</span> <span class="tc-value" id="tc-complexity"></span></span>
+          <span><span class="tc-label">Brightness</span> <span class="tc-value" id="tc-brightness"></span></span>
+          <span><span class="tc-label">Duration</span> <span class="tc-value" id="tc-duration"></span></span>
+        </div>
+      </div>
+    </div>
+    <div class="feedback-bar" id="feedbackBar" style="display: none;">
+      <button class="thumbs-btn thumbs-up" id="thumbsUp" title="I like this track">👍</button>
+      <button class="thumbs-btn thumbs-down" id="thumbsDown" title="Not for me">👎</button>
+      <span class="learning-progress" id="learningProgress"></span>
+    </div>
+  </section>
+
+  <!-- Audio Analysis Panel (hidden by default) -->
+  <div class="analysis-toggle-row">
+    <button class="analysis-toggle-btn" id="analysis-toggle-btn" type="button" aria-expanded="false">
+      Show Analysis
+    </button>
+  </div>
+  <section class="player-section" id="analysis-section" style="display:none;">
+    <AnalysisPanel />
+
+    <!-- Advisor and debug tools stay behind Show Analysis until the backend is verified. -->
+    <section class="player-section analysis-tool-section" id="advisor-section" style="display:none;">
+      <div class="advisor-card" id="advisor-card">
+        <div class="advisor-header">
+          <span class="advisor-badge">Advisor</span>
+          <span class="advisor-status" id="advisor-status">Watching your session…</span>
+          <label class="advisor-auto-label" for="advisor-auto">
+            <input type="checkbox" id="advisor-auto" />
+            <span>Auto</span>
+          </label>
+          <button class="advisor-ask-btn" id="advisor-ask" title="Ask for an analysis suggestion">Ask now</button>
+        </div>
+        <div class="advisor-suggestion" id="advisor-suggestion"></div>
+        <div class="advisor-actions" id="advisor-actions" style="display:none;">
+          <button class="advisor-btn advisor-apply" id="advisor-apply">Apply</button>
+          <button class="advisor-btn advisor-dismiss" id="advisor-dismiss">Dismiss</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="player-section analysis-tool-section" id="debug-section" style="display:none;">
+      <div class="debug-card" id="debug-card">
+        <div class="debug-header">
+          <span class="debug-badge">Debug Listen</span>
+          <label class="debug-toggle-label" for="debug-toggle" aria-label="Enable audio debug recording">
+            <input type="checkbox" id="debug-toggle" class="debug-toggle-input" />
+            <span class="debug-toggle-track"></span>
+          </label>
+          <span class="debug-status" id="debug-status">Off</span>
+        </div>
+        <div class="debug-panel" id="debug-panel" style="display:none;">
+          <div class="debug-actions">
+            <button class="debug-chip" id="debug-am-off" type="button">AM Off</button>
+            <button class="debug-chip" id="debug-am-preset" type="button">30% Preset</button>
+          </div>
+          <div class="debug-params" id="debug-params">Modulation state unavailable.</div>
+          <div class="debug-result" id="debug-result">Waiting for audio chunk…</div>
+          <textarea class="debug-note-input" id="debug-note-input" rows="3" placeholder="Validation note: perceptible, distracting, fatiguing, disappears after 90 seconds…"></textarea>
+          <div class="debug-note-row">
+            <button class="debug-chip" id="debug-save-note" type="button">Save note</button>
+            <span class="debug-note-status" id="debug-note-status">No note saved.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- Timer -->
+  <section class="player-section timer-section">
+    <SessionTimer />
+  </section>
+
+  <!-- Volume Controls -->
+  <section class="player-section volume-section">
+    <VolumeControls />
+  </section>
+</div>
+
+<script>
+  import { ArgoBeatEngine } from '@argobeat/engine';
+
+  // ── State ──
+  let engine: ArgoBeatEngine | null = null;
+  let selectedMood: string = 'focus';
+  let selectedSoundscape: string = 'auto';
+  let selectedSource: 'soundscape' | 'music' | 'both' | 'generated' | 'generated+soundscape' = 'music';
+  let stimulationBoost = false;
+  let activeSource: 'soundscape' | 'music' | 'both' | 'generated' | 'generated+soundscape' = 'music';
+  let currentTrackId: string | null = null;
+  let isPlaying = false;
+  let isPaused = false;
+  let currentSessionId: string | null = null;
+
+  function safeStorageGet(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorageSet(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  function safeStorageRemove(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  let advisorAutoMode = safeStorageGet('argobeat-advisor-auto') === '1';
+
+  const ANALYSIS_API = {
+    sessionStart: '/api/audio-analyze/session-start',
+    sessionStop: '/api/audio-analyze/session-stop',
+    sessionNote: '/api/audio-analyze/session-note',
+    recommendationApplied: '/api/audio-analyze/recommendations-applied',
+  };
+  const FOCUS_30_PERCENT_AM_DEPTH = 0.30;
+  const MOOD_BASE_AM_DEPTH: Record<string, number> = {
+    focus: 0.30,
+    deepWork: 0.35,
+    relax: 0.20,
+    meditate: 0.12,
+    sleep: 0.06,
+  };
+
+  // ── DOM Refs ──
+  const btnPlay = document.getElementById('btn-play') as HTMLButtonElement;
+  const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
+  const btnStop = document.getElementById('btn-stop') as HTMLButtonElement;
+  const btnSkip = document.getElementById('btn-skip') as HTMLButtonElement;
+  const btnBoost = document.getElementById('btn-boost') as HTMLButtonElement | null;
+  const boostPanel = document.getElementById('boost-panel') as HTMLDivElement | null;
+  const statusLine = document.getElementById('status-line')!;
+  const trackMeta  = document.getElementById('track-meta') as HTMLElement;
+  const soundscapeSelect = document.getElementById('soundscape-select') as HTMLSelectElement;
+
+  // ── Track card elements ──
+  const trackCard     = document.getElementById('track-card') as HTMLElement;
+  const trackCardBody = document.getElementById('track-card-body') as HTMLElement;
+  const tcToggle      = document.getElementById('track-card-toggle') as HTMLElement;
+  const tcChevron     = document.getElementById('tc-chevron') as HTMLElement;
+  let cardExpanded    = false;
+
+  tcToggle?.addEventListener('click', () => {
+    cardExpanded = !cardExpanded;
+    trackCardBody.style.display = cardExpanded ? '' : 'none';
+    tcChevron.textContent = cardExpanded ? '▴' : '▾';
+  });
+
+  // ── Mobile Drawer Toggle ──
+  const drawerToggle = document.getElementById('source-drawer-toggle');
+  const drawerContent = document.getElementById('source-drawer-content');
+  const drawerActiveSource = document.getElementById('drawer-active-source');
+
+  function updateDrawerLabel() {
+    if (!drawerActiveSource) return;
+    const labels: Record<string, string> = {
+      soundscape: 'Soundscapes',
+      music: 'Music',
+      both: 'Both',
+      generated: 'Generated',
+      'generated+soundscape': 'Gen+Ambience',
+    };
+    if (typeof selectedSource !== 'undefined') {
+      drawerActiveSource.textContent = labels[selectedSource] || selectedSource;
+    }
+  }
+
+  if (drawerToggle && drawerContent) {
+    drawerToggle.addEventListener('click', () => {
+      const isOpen = drawerContent.classList.toggle('is-open');
+      drawerToggle.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    document.querySelectorAll('.source-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        if (window.innerWidth < 768) {
+          setTimeout(() => {
+            drawerContent.classList.remove('is-open');
+            drawerToggle.setAttribute('aria-expanded', 'false');
+            updateDrawerLabel();
+          }, 150);
+        }
+      });
+    });
+
+    const ssSelect = document.getElementById('soundscape-select');
+    if (ssSelect) {
+      ssSelect.addEventListener('change', () => {
+        if (window.innerWidth < 768) {
+          setTimeout(() => {
+            drawerContent.classList.remove('is-open');
+            drawerToggle.setAttribute('aria-expanded', 'false');
+            updateDrawerLabel();
+          }, 200);
+        }
+      });
+    }
+
+    window.addEventListener('argobeat-mood-select', () => {
+      setTimeout(updateDrawerLabel, 50);
+    });
+
+    updateDrawerLabel();
+  }
+
+  function showTrackMeta(trackId: string | null): void {
+    if (!trackMeta) return;
+    const state = engine?.getState();
+    if (!trackId) {
+      trackMeta.textContent = '';
+      if (trackCard) trackCard.style.display = 'none';
+      return;
+    }
+    const trackName = formatTrackName(trackId) || 'Current track';
+
+    // Compact one-line summary
+    const parts: string[] = [trackName];
+    if (state?.audioSource) parts.push(state.audioSource === 'soundscape' ? 'Soundscape' : state.audioSource === 'both' ? 'Blended' : 'Music');
+    trackMeta.textContent = parts.join('  •  ');
+
+    // Full card
+    if (!trackCard) return;
+    const set = (id: string, val: string) => {
+      const el = document.getElementById(id); if (el) el.textContent = val;
+    };
+    const setTags = (id: string, arr: string[]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = arr.map(t => `<span class="tag">${t}</span>`).join('');
+    };
+
+    const moodLabel = MOOD_LABELS[state?.mood ?? selectedMood] ?? selectedMood;
+    const sourceLabel = state?.audioSource ?? selectedSource;
+    set('tc-name', trackName);
+    set('tc-neural', `${moodLabel} session`);
+    set('tc-genre', sourceLabel === 'soundscape' ? 'Soundscape' : sourceLabel === 'both' ? 'Blended mix' : 'Music');
+    set('tc-state', moodLabel);
+    set('tc-activity', sourceLabel === 'soundscape' ? 'Ambient session' : sourceLabel === 'both' ? 'Layered session' : 'Music session');
+    setTags('tc-moods', [moodLabel, sourceLabel]);
+    setTags('tc-instruments', state?.soundscapeCategory ? [formatTrackName(state.soundscapeCategory)] : []);
+    set('tc-complexity', '—');
+    set('tc-brightness', '—');
+    set('tc-duration', '—');
+
+    trackCard.style.display = '';
+  }
+
+  // ── Mood labels for status display ──
+  const MOOD_LABELS: Record<string, string> = {
+    focus: 'Focus',
+    deepWork: 'Deep Work',
+    relax: 'Relax',
+    meditate: 'Meditate',
+    sleep: 'Sleep',
+  };
+
+  function formatTrackName(trackId: string | null): string {
+    if (!trackId || trackId === 'procedural-fallback') return '';
+    return trackId
+      .replace(/^(lofi|cosmic)-/, '')
+      .replace(/-(focus|deep|relax|meditate|sleep)$/, '')
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function preferredSourceForMood(mood: string): 'soundscape' | 'music' | 'both' | 'generated' | 'generated+soundscape' {
+    return (mood === 'sleep' || mood === 'meditate') ? 'soundscape' : 'music';
+  }
+
+  function isSoundscapeOnlyMood(mood: string): boolean {
+    return mood === 'sleep' || mood === 'meditate';
+  }
+
+  function supportsStimulationBoost(mood: string, source: 'soundscape' | 'music' | 'both'): boolean {
+    return !isSoundscapeOnlyMood(mood) && source !== 'soundscape';
+  }
+
+  function syncBoostUi(): void {
+    const eligible = supportsStimulationBoost(selectedMood, selectedSource);
+    if (!eligible) {
+      stimulationBoost = false;
+    }
+    if (boostPanel) boostPanel.hidden = !eligible;
+    if (btnBoost) {
+      btnBoost.disabled = !eligible;
+      btnBoost.classList.toggle('active', eligible && stimulationBoost);
+      btnBoost.setAttribute('aria-pressed', eligible && stimulationBoost ? 'true' : 'false');
+    }
+  }
+
+  function formatSoundscapeName(category: string | null, variation: string | null): string {
+    if (!category) return '';
+    const categoryName = formatTrackName(category);
+    const variationName = formatTrackName(variation);
+    return variationName ? `${categoryName} - ${variationName}` : categoryName;
+  }
+
+  function updateNowPlayingStatus(state = engine?.getState()): void {
+    const moodName = MOOD_LABELS[selectedMood] || selectedMood;
+    const trackName = formatTrackName(state?.currentMusicTrack ?? null);
+    const soundscapeName = formatSoundscapeName(
+      state?.soundscapeCategory ?? null,
+      state?.currentVariation ?? null,
+    );
+    const layers = [soundscapeName, trackName].filter(Boolean);
+
+    statusLine.textContent = layers.length
+      ? `Playing: ${moodName} - ${layers.join(' + ')}`
+      : `Playing: ${moodName}`;
+  }
+
+  // ── Valid soundscape categories (must match SoundscapeCategory type) ──
+  const VALID_CATEGORIES = new Set([
+    'auto', 'rain', 'ocean', 'forest', 'cafe', 'fire', 'space', 'stream', 'wind', 'thunder', 'gongs', 'jungle',
+    'noise', 'birds', 'cave',
+  ]);
+
+  function resetSoundscapeToAuto(): void {
+    selectedSoundscape = 'auto';
+    soundscapeSelect.value = 'auto';
+    safeStorageRemove('argobeat-soundscape');
+  }
+
+  function emitSessionState(): void {
+    window.dispatchEvent(new CustomEvent('argobeat:sessionState', {
+      detail: { sessionId: currentSessionId, isPlaying, isPaused, mood: selectedMood, source: selectedSource },
+    }));
+  }
+
+  async function startRemoteSession(state = engine?.getState()): Promise<void> {
+    try {
+      const res = await fetch(ANALYSIS_API.sessionStart, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mood: selectedMood,
+          source: state?.audioSource ?? selectedSource,
+          initial_track: state?.currentMusicTrack ?? null,
+          initial_soundscape: state?.soundscapeCategory ?? selectedSoundscape ?? null,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { sessionId?: string };
+      currentSessionId = data.sessionId ?? null;
+      emitSessionState();
+    } catch {
+      currentSessionId = null;
+      emitSessionState();
+    }
+  }
+
+  async function stopRemoteSession(status: 'completed' | 'stopped'): Promise<void> {
+    const sessionId = currentSessionId;
+    currentSessionId = null;
+    emitSessionState();
+    if (!sessionId) return;
+    try {
+      await fetch(ANALYSIS_API.sessionStop, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, status }),
+      });
+    } catch {
+      /* best-effort only */
+    }
+  }
+
+  async function saveSessionNote(note: string, metadata: Record<string, unknown> = {}): Promise<boolean> {
+    if (!currentSessionId || !note.trim()) return false;
+    try {
+      const res = await fetch(ANALYSIS_API.sessionNote, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: currentSessionId,
+          note: note.trim(),
+          note_type: 'am_validation',
+          metadata,
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function markRecommendationApplied(recommendationId?: string): Promise<void> {
+    if (!recommendationId) return;
+    try {
+      await fetch(ANALYSIS_API.recommendationApplied, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendation_id: recommendationId }),
+      });
+    } catch {
+      /* best-effort only */
+    }
+  }
+
+  // Soundscapes should start from the mood's best-fit automatic pool.
+  resetSoundscapeToAuto();
+
+  // ── Engine Initialization (lazy, on first user gesture) ──
+  async function ensureEngine(): Promise<ArgoBeatEngine> {
+    if (!engine) {
+      engine = new ArgoBeatEngine();
+      // Expose a cleanup hook so version-switch can stop audio before
+      // the ClientRouter view-transition swaps the DOM
+      (window as any).__argobeatEngine = engine;
+      await engine.initialize();
+
+      const masterVolumeSlider = document.getElementById('master-volume') as HTMLInputElement | null;
+      if (masterVolumeSlider) {
+        engine.setVolume(Number(masterVolumeSlider.value) / 100);
+      }
+
+      // Forward analyser to visualizer + analysis panel
+      const analyser = engine.getAnalyser();
+      if (analyser) {
+        window.dispatchEvent(
+          new CustomEvent('argobeat-engine-ready', {
+            detail: { analyser },
+          })
+        );
+        // Also fire the analysis panel event
+        window.dispatchEvent(
+          new CustomEvent('argobeat:engineReady', { detail: { analyser } })
+        );
+      }
+
+      // Wire engine events to window CustomEvents for child components
+      // Also drive local transport state from engine state to prevent race conditions
+      engine.on('stateChange', (state) => {
+        const wasPlaying = isPlaying;
+        const wasPaused = isPaused;
+        isPlaying = state.isPlaying;
+        isPaused = state.isPaused;
+        activeSource = state.audioSource ?? activeSource;
+        currentTrackId = state.currentMusicTrack ?? null;
+
+        // Persist engine state for version-switch resilience (only on transport change, not every tick)
+        if (state.isPlaying !== wasPlaying || state.isPaused !== wasPaused) {
+          try {
+            localStorage.setItem('argobeat-engine-state', JSON.stringify({
+              isPlaying: state.isPlaying,
+              mood: state.mood ?? selectedMood,
+              source: state.audioSource ?? selectedSource,
+            }));
+          } catch {} // localStorage may be unavailable
+        }
+        // Update modulation indicator with current Hz
+        if (modTarget !== 'off' && modHz && state.sessionHz) {
+          modHz.textContent = `${state.sessionHz.toFixed(1)} Hz`;
+        }
+        // Forward state to analysis panel
+        window.dispatchEvent(new CustomEvent('argobeat:stateChange', { detail: state }));
+        updateTransport(state.isPlaying || state.isPaused, state.isPaused);
+
+        window.dispatchEvent(
+          new CustomEvent('argobeat-state-change', {
+            detail: {
+              isPlaying: state.isPlaying,
+              isPaused: state.isPaused,
+              mood: state.mood ?? selectedMood,
+            },
+          })
+        );
+        emitSessionState();
+      });
+
+      engine.on('tick', (elapsed, total) => {
+        window.dispatchEvent(
+          new CustomEvent('argobeat-tick', {
+            detail: { elapsedSeconds: elapsed, sessionSeconds: total },
+          })
+        );
+      });
+
+      engine.on('musicTrackChange', (_from, to) => {
+        currentTrackId = to;
+        updateNowPlayingStatus();
+        showTrackMeta(to);
+      });
+
+      engine.on('variationChange', () => {
+        updateNowPlayingStatus();
+      });
+
+      engine.on('sessionComplete', () => {
+        statusLine.textContent = 'Session complete';
+        updateTransport(false, false);
+        trackSession('complete', selectedMood);
+        void stopRemoteSession('completed');
+      });
+
+      engine.on('error', (err) => {
+        console.error('[ArgoBeat]', err);
+        statusLine.textContent = 'Audio error — try refreshing';
+      });
+    }
+    return engine;
+  }
+
+  // ── Transport Actions ──
+
+  async function startPlayback() {
+    try {
+      const eng = await ensureEngine();
+
+      // Play with optional soundscape category override (validate first)
+      const playOptions: { category?: any; stimulationBoost?: boolean } = {};
+      if (selectedSoundscape !== 'auto' && VALID_CATEGORIES.has(selectedSoundscape) && selectedSoundscape !== 'auto') {
+        playOptions.category = selectedSoundscape;
+      }
+      if (stimulationBoost && supportsStimulationBoost(selectedMood, selectedSource)) {
+        playOptions.stimulationBoost = true;
+      }
+
+      await eng.play(selectedMood as any, { ...playOptions, source: selectedSource });
+      activeSource = eng.getState().audioSource ?? selectedSource;
+      // State (isPlaying/isPaused) is now driven by engine stateChange event
+
+      // Re-send analyser ref (graph is rebuilt on each play call)
+      const analyser = eng.getAnalyser();
+      if (analyser) {
+        window.dispatchEvent(new CustomEvent('argobeat-engine-ready', { detail: { analyser } }));
+        // Analysis panel — fires here so analyser is guaranteed non-null
+        window.dispatchEvent(new CustomEvent('argobeat:engineReady', { detail: { analyser } }));
+      }
+
+      // Enforce modulation pill state — engine starts at 0 depth, UI is source of truth
+      applyModulation();
+
+      updateNowPlayingStatus(eng.getState());
+
+      // Show feedback bar for rating
+      showFeedbackBar();
+
+      await startRemoteSession(eng.getState());
+
+      // Track session start (localStorage, privacy-first)
+      trackSession('start', selectedMood);
+    } catch (err) {
+      console.error('[ArgoBeat] Play failed:', err);
+      statusLine.textContent = 'Failed to start — tap to retry';
+    }
+  }
+
+  function doPause() {
+    if (!engine) return;
+    engine.pause();
+    // State updated by engine stateChange event
+    statusLine.textContent = 'Paused';
+  }
+
+  function doResume() {
+    if (!engine) return;
+    engine.resume();
+    // State updated by engine stateChange event
+    updateNowPlayingStatus();
+  }
+
+  function doStop() {
+    if (!engine) return;
+
+    // Track if user stopped early
+    const state = engine.getState();
+    if (state.elapsedSeconds > 10) {
+      trackSession('stopped', selectedMood);
+    }
+
+    engine.stop();
+    // State updated by engine stateChange event
+    statusLine.textContent = 'Select a mood and press play';
+    hideFeedbackBar();
+    void stopRemoteSession('stopped');
+  }
+
+  async function doSkip() {
+    if (!engine || !isPlaying) return;
+
+    const state = engine.getState();
+    const liveSource = state.audioSource ?? activeSource ?? selectedSource;
+
+    if (liveSource === 'both') {
+      const [musicSkipped, soundscapeSkipped] = await Promise.all([
+        engine.skipMusic(),
+        engine.skipSoundscape(),
+      ]);
+
+      if (musicSkipped && soundscapeSkipped) {
+        statusLine.textContent = 'Skipping to a fresh mix...';
+        showFeedbackBar();
+        return;
+      }
+      if (musicSkipped) {
+        statusLine.textContent = 'Skipping to next music...';
+        showFeedbackBar();
+        return;
+      }
+      if (soundscapeSkipped) {
+        statusLine.textContent = 'Skipping to next soundscape...';
+        return;
+      }
+
+      statusLine.textContent = 'No alternate mix available right now';
+      return;
+    }
+
+    if (liveSource === 'music') {
+      const skipped = await engine.skipMusic();
+      statusLine.textContent = skipped
+        ? 'Skipping to next music...'
+        : 'No alternate music track available';
+      if (skipped) showFeedbackBar();
+      return;
+    }
+
+    const soundscapeSkipped = await engine.skipSoundscape();
+    if (soundscapeSkipped) {
+      statusLine.textContent = 'Skipping to next soundscape...';
+      return;
+    }
+
+    const musicFallback = state.currentMusicTrack ? await engine.skipMusic() : false;
+    statusLine.textContent = musicFallback
+      ? 'Soundscape unavailable, skipping music instead...'
+      : 'No alternate soundscape available';
+    if (musicFallback) showFeedbackBar();
+  }
+
+  function updateTransport(playing: boolean, paused: boolean) {
+    btnPlay.disabled = playing && !paused;
+    btnPause.disabled = !playing;
+    btnStop.disabled = !playing && !paused;
+    btnSkip.disabled = !playing;
+
+    // Visual state on play button
+    btnPlay.classList.toggle('active-glow', playing && !paused);
+  }
+
+  // ── Session Tracking (localStorage, privacy-first) ──
+
+  function trackSession(action: string, moodId: string) {
+    try {
+      const stats = JSON.parse(localStorage.getItem('argobeat-stats') || '{}');
+      if (!stats.totalSessions) stats.totalSessions = 0;
+      if (!stats.totalMinutes) stats.totalMinutes = 0;
+      if (!stats.moods) stats.moods = {};
+
+      if (action === 'complete' || action === 'stopped') {
+        const state = engine?.getState();
+        stats.totalSessions++;
+        stats.totalMinutes += Math.round((state?.elapsedSeconds ?? 0) / 60);
+        stats.moods[moodId] = (stats.moods[moodId] || 0) + 1;
+        stats.lastSession = new Date().toISOString();
+      }
+
+      localStorage.setItem('argobeat-stats', JSON.stringify(stats));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
+
+  // ── AudioContext global unlock ────────────────────────────────────────────
+  // Pre-warm on any user interaction so the context is always ready by the
+  // time play is pressed. iOS Safari is especially strict about this.
+  const unlockAudio = () => {
+    if (engine) {
+      engine.getAudioContext()?.resume().catch(() => {});
+    } else {
+      // Context doesn't exist yet — create it silently so it starts in running state
+      try {
+        const tmpCtx = new AudioContext();
+        tmpCtx.resume().then(() => tmpCtx.close());
+      } catch { /* ignore */ }
+    }
+  };
+  document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+  document.addEventListener('click',      unlockAudio, { once: true });
+
+  // ── Event Bindings ──
+
+  btnPlay.addEventListener('click', () => {
+    // Resume the engine's AudioContext synchronously inside the user-gesture
+    // window. Browsers suspend AudioContexts until the first user gesture;
+    // if resume() is deferred into an async chain it may stay suspended.
+    if (engine) {
+      engine.getAudioContext()?.resume().catch(() => {});
+    }
+
+    if (isPaused) doResume();
+    else if (!isPlaying) startPlayback();
+  });
+
+  btnPause.addEventListener('click', () => {
+    if (isPlaying && !isPaused) doPause();
+    else if (isPaused) doResume();
+  });
+
+  btnStop.addEventListener('click', () => doStop());
+
+  btnSkip.addEventListener('click', () => {
+    void doSkip();
+  });
+
+  // ── Thumbs Up/Down Feedback System ──
+
+  const PREFS_KEY = 'argobeat-user-preferences';
+  const LEARNING_THRESHOLD = 10;
+  const feedbackBar = document.getElementById('feedbackBar');
+  const thumbsUp = document.getElementById('thumbsUp') as HTMLButtonElement;
+  const thumbsDown = document.getElementById('thumbsDown') as HTMLButtonElement;
+  const learningProgress = document.getElementById('learningProgress');
+
+  function loadPrefs() {
+    try {
+      const stored = safeStorageGet(PREFS_KEY);
+      return stored ? JSON.parse(stored) : {
+        version: '2.0', createdAt: Date.now(), updatedAt: Date.now(),
+        feedbackCount: { thumbsUp: 0, thumbsDown: 0 }, trackRatings: []
+      };
+    } catch { return { version: '2.0', createdAt: Date.now(), updatedAt: Date.now(), feedbackCount: { thumbsUp: 0, thumbsDown: 0 }, trackRatings: [] }; }
+  }
+
+  function savePrefs(prefs: any) {
+    prefs.updatedAt = Date.now();
+    safeStorageSet(PREFS_KEY, JSON.stringify(prefs));
+  }
+
+  function updateLearningUI() {
+    if (!learningProgress) return;
+    const prefs = loadPrefs();
+    const count = prefs.feedbackCount.thumbsUp;
+    if (count < LEARNING_THRESHOLD) {
+      learningProgress.textContent = `Teaching ArgoBeat: ${count}/${LEARNING_THRESHOLD}`;
+    } else {
+      learningProgress.textContent = '✓ Adapting to your preferences';
+    }
+  }
+
+  function rateTrack(rating: 'up' | 'down') {
+    const prefs = loadPrefs();
+    const trackId = currentTrackId ?? `${selectedMood}-${Date.now()}`;
+    prefs.trackRatings.push({ id: trackId, mood: selectedMood, rating, timestamp: Date.now() });
+    if (rating === 'up') prefs.feedbackCount.thumbsUp++;
+    else prefs.feedbackCount.thumbsDown++;
+    savePrefs(prefs);
+
+    // Visual feedback: disable buttons, highlight chosen
+    thumbsUp.disabled = true;
+    thumbsDown.disabled = true;
+    if (rating === 'up') thumbsUp.classList.add('rated');
+    else thumbsDown.classList.add('rated');
+    updateLearningUI();
+  }
+
+  function showFeedbackBar() {
+    if (feedbackBar) feedbackBar.style.display = 'flex';
+    thumbsUp.disabled = false;
+    thumbsDown.disabled = false;
+    thumbsUp.classList.remove('rated');
+    thumbsDown.classList.remove('rated');
+    updateLearningUI();
+  }
+
+  function hideFeedbackBar() {
+    if (feedbackBar) feedbackBar.style.display = 'none';
+  }
+
+  thumbsUp?.addEventListener('click', () => rateTrack('up'));
+  thumbsDown?.addEventListener('click', () => rateTrack('down'));
+
+  soundscapeSelect.addEventListener('change', () => {
+    selectedSoundscape = VALID_CATEGORIES.has(soundscapeSelect.value) ? soundscapeSelect.value : 'auto';
+    soundscapeSelect.value = selectedSoundscape;
+    safeStorageRemove('argobeat-soundscape');
+    // If currently playing, restart with the new soundscape
+    if (isPlaying && engine) {
+      doStop();
+      setTimeout(() => startPlayback(), 150);
+    }
+  });
+
+  // Source toggle: Soundscapes / Both / Music
+  const sourceTabs = document.querySelectorAll<HTMLButtonElement>('.source-tab');
+  const soundscapePicker = document.querySelector<HTMLElement>('.soundscape-picker');
+
+  function setSourceMode(source: 'soundscape' | 'music' | 'both' | 'generated' | 'generated+soundscape'): void {
+    selectedSource = isSoundscapeOnlyMood(selectedMood) ? 'soundscape' : source;
+    sourceTabs.forEach((tab) => {
+      const tabSource = tab.dataset.source;
+      const disabled = isSoundscapeOnlyMood(selectedMood) && tabSource !== 'soundscape';
+      const active = tabSource === selectedSource;
+      tab.disabled = disabled;
+      tab.title = disabled ? 'Sleep and meditation use soundscapes only until suitable music is approved.' : '';
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    });
+
+    if (soundscapePicker) {
+      soundscapePicker.style.display = selectedSource === 'music' ? 'none' : '';
+    }
+
+    syncBoostUi();
+  }
+
+  sourceTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      if (tab.disabled) return;
+      const source = tab.dataset.source as 'soundscape' | 'music' | 'both' | 'generated' | 'generated+soundscape' | undefined;
+      setSourceMode(source || preferredSourceForMood(selectedMood));
+      safeStorageSet('argobeat-source', selectedSource);
+
+      // If playing, restart with new source mode
+      if (isPlaying && engine) {
+        doStop();
+        setTimeout(() => startPlayback(), 150);
+      }
+    });
+  });
+
+  btnBoost?.addEventListener('click', () => {
+    if (!supportsStimulationBoost(selectedMood, selectedSource)) return;
+    stimulationBoost = !stimulationBoost;
+
+    // If turning ON while in music-only mode, switch to both so soundscape activates
+    if (stimulationBoost && selectedSource === 'music') {
+      setSourceMode('both');
+      // Need restart when switching source mode
+      if (isPlaying && engine) { doStop(); setTimeout(() => startPlayback(), 150); }
+    } else {
+      syncBoostUi();
+      // Update gains live — no restart needed when toggling within same source mode
+      if (engine) engine.setStimulationBoost(stimulationBoost);
+    }
+  });
+
+  // ── Modulation depth slider ───────────────────────────────────────────────
+  // ── Modulation controls ───────────────────────────────────────────
+  const modulationSlider = document.getElementById('modulation-depth') as HTMLInputElement | null;
+  const modulationValue  = document.getElementById('modulation-value') as HTMLElement | null;
+  const modDepthRow      = document.getElementById('mod-depth-row') as HTMLElement | null;
+  const modHelper        = document.getElementById('mod-helper') as HTMLElement | null;
+  const modIndicator     = document.getElementById('mod-indicator') as HTMLElement | null;
+  const modDot           = document.getElementById('mod-dot') as HTMLElement | null;
+  const modHz            = document.getElementById('mod-hz') as HTMLElement | null;
+
+  let modTarget: 'off' | 'music' | 'soundscape' | 'both' = 'music';
+
+  const MOD_HELPERS: Record<string, string> = {
+    off:        'Off — no AM modulation on any layer.',
+    music:      'Music — rhythmic pulse applied to the music track at chosen depth.',
+    soundscape:'Ambience — soundscape routed through the modulation chain.',
+    both:       'Both — AM modulation on music and soundscape simultaneously.',
+  };
+
+  function applyModulation(): void {
+    if (!engine) return;
+    const depthPct = modulationSlider ? parseInt(modulationSlider.value, 10) : 100;
+    const scale = depthPct / 100; // 0 = none, 1.5 = 150% of mood default
+
+    if (modTarget === 'off') {
+      engine.setModulateSoundscape(0);
+      engine.setMusicModulationScale(0);
+    } else if (modTarget === 'music') {
+      engine.setModulateSoundscape(0);
+      engine.setMusicModulationScale(scale);
+    } else if (modTarget === 'soundscape') {
+      engine.setModulateSoundscape(scale);
+      engine.setMusicModulationScale(0);
+    } else { // both
+      engine.setModulateSoundscape(scale);
+      engine.setMusicModulationScale(scale);
+    }
+
+    if (modulationValue) modulationValue.textContent = `${depthPct}%`;
+
+    // Update modulation indicator
+    const active = modTarget !== 'off' && depthPct > 0;
+    if (modIndicator) modIndicator.hidden = !active;
+    if (modDot) modDot.classList.toggle('active', active);
+    if (modHz && active) {
+      const hz = engine.getState()?.sessionHz;
+      if (hz) modHz.textContent = `${hz.toFixed(1)} Hz`;
+    }
+  }
+
+  document.querySelectorAll('.mod-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mod-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      modTarget = (btn as HTMLElement).dataset.target as typeof modTarget;
+      const showSlider = modTarget !== 'off';
+      if (modDepthRow) modDepthRow.style.display = showSlider ? '' : 'none';
+      if (modHelper) modHelper.textContent = MOD_HELPERS[modTarget];
+      applyModulation();
+      updateDebugParams();
+    });
+  });
+
+  modulationSlider?.addEventListener('input', () => {
+    const pct = parseInt(modulationSlider.value, 10);
+    if (modulationValue) modulationValue.textContent = `${pct}%`;
+    applyModulation();
+    updateDebugParams();
+  });
+
+  // Restore persisted source preference, or default to music
+  const savedSource = safeStorageGet('argobeat-source') as 'soundscape' | 'music' | 'both' | 'generated' | 'generated+soundscape' | null;
+  setSourceMode(savedSource || preferredSourceForMood(selectedMood));
+
+  window.addEventListener('argobeat-mood-select', ((e: CustomEvent) => {
+    selectedMood = e.detail.mood;
+    resetSoundscapeToAuto();
+    setSourceMode(preferredSourceForMood(selectedMood));
+
+    // Modulation is only science-backed for focus and deepWork.
+    // Relax (alpha) has limited evidence. Meditate (theta) and sleep (delta)
+    // have no published evidence for AM entrainment — disable modulation.
+    const modMoods = ['focus', 'deepWork'];
+    const modSupported = modMoods.includes(selectedMood);
+    const modPanel = document.getElementById('modulation-panel');
+    if (modPanel) modPanel.style.display = modSupported ? '' : 'none';
+    if (!modSupported && modTarget !== 'off') {
+      // Force mod off for non-supported moods
+      modTarget = 'off';
+      document.querySelectorAll('.mod-pill').forEach(b => b.classList.remove('active'));
+      const offPill = document.querySelector('.mod-pill[data-target="off"]');
+      if (offPill) offPill.classList.add('active');
+      applyModulation();
+    }
+    if (isPlaying || isPaused) {
+      doStop();
+      // Brief delay then restart with new mood
+      setTimeout(() => startPlayback(), 150);
+    }
+  }) as EventListener);
+
+  window.addEventListener('argobeat-volume-change', ((e: CustomEvent) => {
+    if (engine) {
+      engine.setVolume(e.detail.master);
+    }
+  }) as EventListener);
+
+  // ── Analysis panel: apply generative parameter suggestions ──────────────
+  window.addEventListener('argobeat:applyGenerativeParams', ((e: CustomEvent) => {
+    const params = e.detail as Record<string, number>;
+    if (!engine) return;
+    // Route to generative engine via the engine's internal reference
+    // The engine exposes this via a custom event forwarded to GenerativeEngine
+    for (const [key, val] of Object.entries(params)) {
+      window.dispatchEvent(new CustomEvent('argobeat:setGenerativeParam', { detail: { key, val } }));
+    }
+  }) as EventListener);
+
+  // ── Analysis Advisor ─────────────────────────────────────────────────────
+
+  const advisorSection = document.getElementById('advisor-section') as HTMLElement;
+  const advisorStatus = document.getElementById('advisor-status') as HTMLElement;
+  const advisorSuggestion = document.getElementById('advisor-suggestion') as HTMLElement;
+  const advisorActions = document.getElementById('advisor-actions') as HTMLElement;
+  const advisorApply = document.getElementById('advisor-apply') as HTMLButtonElement;
+  const advisorDismiss = document.getElementById('advisor-dismiss') as HTMLButtonElement;
+  const advisorAskBtn = document.getElementById('advisor-ask') as HTMLButtonElement;
+  const advisorAuto = document.getElementById('advisor-auto') as HTMLInputElement;
+
+  interface AdvisorPrimaryAction {
+    kind: 'soundscape' | 'music' | 'boost_on' | 'boost_off' | 'modulation';
+    params?: { category?: string; percent?: number; target?: 'music' | 'soundscape' | 'both' };
+  }
+
+  interface AiAdvisorResult {
+    suggestion: string;
+    primaryAction?: AdvisorPrimaryAction;
+    autoApply: boolean;
+    source: 'gemma4' | 'local-fallback';
+    recommendationId?: string;
+  }
+
+  interface PendingAdvisorAction {
+    action?: AdvisorPrimaryAction;
+    recommendationId?: string;
+  }
+
+  advisorAuto.checked = advisorAutoMode;
+
+  function getCurrentModulationPercent(): number {
+    return modulationSlider ? parseInt(modulationSlider.value, 10) : 0;
+  }
+
+  function localAdvisorSuggestion(mood: string, soundscape: string, elapsedMin: number): AiAdvisorResult {
+    const trackName = formatTrackName(currentTrackId);
+    const hasTrack = Boolean(trackName);
+
+    if (!hasTrack && selectedSource !== 'soundscape') {
+      return {
+        suggestion: 'The music layer did not land cleanly. Refresh the track before changing the rest of the scene.',
+        primaryAction: { kind: 'music' },
+        autoApply: false,
+        source: 'local-fallback',
+      };
+    }
+
+    if ((mood === 'focus' || mood === 'deepWork') && soundscape === 'thunder') {
+      return {
+        suggestion: 'The storm layer is a bit too aggressive for sustained work. Forest is the safer masking bed.',
+        primaryAction: { kind: 'soundscape', params: { category: 'forest' } },
+        autoApply: true,
+        source: 'local-fallback',
+      };
+    }
+
+    if (mood === 'relax') {
+      return {
+        suggestion: 'Keep the mix gentle. If it starts to feel crowded, ocean is the cleanest small shift.',
+        primaryAction: soundscape === 'auto' ? { kind: 'soundscape', params: { category: 'ocean' } } : undefined,
+        autoApply: true,
+        source: 'local-fallback',
+      };
+    }
+
+    return {
+      suggestion: elapsedMin >= 8
+        ? `You have momentum. Hold the current scene a bit longer and only refresh the track if focus starts to flatten out.`
+        : `${trackName || 'The current scene'} is stable enough for now. Leave it alone unless it starts pulling attention.`,
+      primaryAction: elapsedMin >= 8 ? { kind: 'music' } : undefined,
+      autoApply: false,
+      source: 'local-fallback',
+    };
+  }
+
+  async function fetchAdvisorSuggestion(mood: string, soundscape: string, elapsedMin: number): Promise<AiAdvisorResult> {
+    try {
+      const state = engine?.getState();
+      const res = await fetch('/api/ai-advisor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: currentSessionId,
+          mood,
+          soundscape,
+          elapsed_minutes: elapsedMin,
+          current_track: formatTrackName(currentTrackId),
+          modulation_percent: getCurrentModulationPercent(),
+          sprint_boost_active: stimulationBoost,
+          brightness: undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as AiAdvisorResult;
+        if (data.suggestion) return data;
+      }
+    } catch {
+      /* fall through */
+    }
+    return localAdvisorSuggestion(mood, soundscape, elapsedMin);
+  }
+
+  let advisorTimer: number | null = null;
+  let pendingAdvisor: PendingAdvisorAction = {};
+  let advisorThinking = false;
+
+  function actionButtonLabel(action?: AdvisorPrimaryAction): string {
+    if (!action) return 'Apply';
+    if (action.kind === 'soundscape') return `Switch to ${formatTrackName(action.params?.category ?? '')}`;
+    if (action.kind === 'music') return 'Fresh Track';
+    if (action.kind === 'boost_on') return 'Engage Boost';
+    if (action.kind === 'boost_off') return 'Ease Boost';
+    if (action.kind === 'modulation') return `Use ${action.params?.percent ?? 0}% Modulation`;
+    return 'Apply';
+  }
+
+  async function executeAdvisorAction(action?: AdvisorPrimaryAction, recommendationId?: string): Promise<boolean> {
+    if (!action) return false;
+
+    if (action.kind === 'soundscape') {
+      const category = action.params?.category;
+      if (!category || !VALID_CATEGORIES.has(category)) return false;
+      selectedSoundscape = category;
+      soundscapeSelect.value = category;
+      advisorStatus.textContent = `Applied — switched to ${category}`;
+      if (isPlaying && engine) { doStop(); setTimeout(() => startPlayback(), 150); }
+      await markRecommendationApplied(recommendationId);
+      return true;
+    }
+
+    if (action.kind === 'music' && engine && isPlaying) {
+      advisorStatus.textContent = 'Applied — skipping to a fresh track';
+      await engine.skipMusic();
+      await markRecommendationApplied(recommendationId);
+      return true;
+    }
+
+    if (action.kind === 'boost_on') {
+      stimulationBoost = true;
+      syncBoostUi();
+      engine?.setStimulationBoost(true);
+      advisorStatus.textContent = 'Applied — sprint boost engaged';
+      await markRecommendationApplied(recommendationId);
+      return true;
+    }
+
+    if (action.kind === 'boost_off') {
+      stimulationBoost = false;
+      syncBoostUi();
+      engine?.setStimulationBoost(false);
+      advisorStatus.textContent = 'Applied — sprint boost eased';
+      await markRecommendationApplied(recommendationId);
+      return true;
+    }
+
+    if (action.kind === 'modulation') {
+      const target = action.params?.target ?? 'both';
+      modTarget = target;
+      document.querySelectorAll('.mod-pill').forEach((btn) => {
+        btn.classList.toggle('active', (btn as HTMLElement).dataset.target === target);
+      });
+      if (modDepthRow) modDepthRow.style.display = target === 'off' ? 'none' : '';
+      if (modHelper) modHelper.textContent = MOD_HELPERS[target];
+      if (modulationSlider && typeof action.params?.percent === 'number') {
+        modulationSlider.value = String(action.params.percent);
+        if (modulationValue) modulationValue.textContent = `${action.params.percent}%`;
+      }
+      applyModulation();
+      advisorStatus.textContent = `Applied — modulation set to ${action.params?.percent ?? getCurrentModulationPercent()}%`;
+      await markRecommendationApplied(recommendationId);
+      return true;
+    }
+
+    return false;
+  }
+
+  async function showAdvisorSuggestion(result: AiAdvisorResult): Promise<void> {
+    advisorSuggestion.textContent = result.suggestion;
+    pendingAdvisor = { action: result.primaryAction, recommendationId: result.recommendationId };
+    advisorApply.textContent = actionButtonLabel(result.primaryAction);
+    advisorActions.style.display = result.primaryAction ? 'flex' : 'none';
+    advisorStatus.textContent = result.primaryAction
+      ? `${result.source === 'gemma4' ? 'Advisor' : 'Fallback'} suggestion ready`
+      : 'Watching your session…';
+    advisorAskBtn.disabled = false;
+    advisorThinking = false;
+
+    if (
+      advisorAutoMode &&
+      result.autoApply &&
+      result.primaryAction &&
+      result.primaryAction.kind !== 'music'
+    ) {
+      advisorActions.style.display = 'none';
+      await executeAdvisorAction(result.primaryAction, result.recommendationId);
+      pendingAdvisor = {};
+    }
+  }
+
+  function advisorThink() {
+    if (advisorThinking) return;
+    advisorThinking = true;
+    advisorStatus.textContent = 'Thinking…';
+    advisorSuggestion.textContent = '';
+    advisorActions.style.display = 'none';
+    advisorAskBtn.disabled = true;
+    if (advisorTimer) { clearTimeout(advisorTimer); advisorTimer = null; }
+
+    const elapsed = engine ? Math.round(engine.getState().elapsedSeconds / 60) : 0;
+    fetchAdvisorSuggestion(selectedMood, selectedSoundscape, elapsed).then(async (result) => {
+      if (!isPlaying) { advisorThinking = false; return; }
+      await showAdvisorSuggestion(result);
+      advisorTimer = window.setTimeout(advisorThink, 5 * 60 * 1000);
+    });
+  }
+
+  function startAdvisor() {
+    advisorSection.style.display = '';
+    advisorStatus.textContent = 'Watching your session…';
+    advisorSuggestion.textContent = '';
+    advisorActions.style.display = 'none';
+    advisorAskBtn.disabled = false;
+    advisorThinking = false;
+    if (advisorTimer) clearTimeout(advisorTimer);
+    advisorTimer = window.setTimeout(advisorThink, 20 * 1000);
+  }
+
+  function stopAdvisor() {
+    if (advisorTimer) { clearTimeout(advisorTimer); advisorTimer = null; }
+    advisorThinking = false;
+    advisorSection.style.display = 'none';
+    advisorSuggestion.textContent = '';
+    pendingAdvisor = {};
+  }
+
+  advisorAuto?.addEventListener('change', () => {
+    advisorAutoMode = advisorAuto.checked;
+    safeStorageSet('argobeat-advisor-auto', advisorAutoMode ? '1' : '0');
+  });
+
+  advisorAskBtn?.addEventListener('click', () => {
+    if (!advisorThinking) advisorThink();
+  });
+
+  advisorApply?.addEventListener('click', async () => {
+    if (!pendingAdvisor.action) {
+      advisorActions.style.display = 'none';
+      return;
+    }
+    advisorActions.style.display = 'none';
+    await executeAdvisorAction(pendingAdvisor.action, pendingAdvisor.recommendationId);
+    pendingAdvisor = {};
+  });
+
+  advisorDismiss?.addEventListener('click', () => {
+    advisorSuggestion.textContent = '';
+    advisorActions.style.display = 'none';
+    advisorStatus.textContent = 'Watching your session…';
+    pendingAdvisor = {};
+  });
+
+  window.addEventListener('argobeat-state-change', ((e: CustomEvent) => {
+    if (!e.detail.isPlaying && !e.detail.isPaused) {
+      stopAdvisor();
+    }
+  }) as EventListener);
+
+  // ── Audio Debug Hook ────────────────────────────────────────────────────────
+
+  // Analysis panel toggle
+  const analysisToggleBtn = document.getElementById('analysis-toggle-btn') as HTMLButtonElement;
+  const analysisSection   = document.getElementById('analysis-section')   as HTMLElement;
+  const debugSection = document.getElementById('debug-section') as HTMLElement;
+  if (analysisToggleBtn && analysisSection) {
+    analysisToggleBtn.addEventListener('click', () => {
+      const open = analysisSection.style.display !== 'none';
+      analysisSection.style.display = open ? 'none' : '';
+      debugSection.style.display = open ? 'none' : '';
+      if (open) {
+        stopAdvisor();
+        if (debugToggle?.checked) {
+          stopDebugListen();
+          debugToggle.checked = false;
+        }
+      } else {
+        advisorSection.style.display = '';
+        advisorStatus.textContent = 'Ready when you ask.';
+      }
+      analysisToggleBtn.textContent  = open ? 'Show Analysis' : 'Hide Analysis';
+      analysisToggleBtn.setAttribute('aria-expanded', String(!open));
+    });
+  }
+
+  const debugToggle  = document.getElementById('debug-toggle')  as HTMLInputElement;
+  const debugStatus  = document.getElementById('debug-status')  as HTMLElement;
+  const debugPanel   = document.getElementById('debug-panel')   as HTMLElement;
+  const debugResult  = document.getElementById('debug-result')  as HTMLElement;
+  const debugParams  = document.getElementById('debug-params')  as HTMLElement;
+  const debugAmOff   = document.getElementById('debug-am-off')  as HTMLButtonElement;
+  const debugAmPreset = document.getElementById('debug-am-preset') as HTMLButtonElement;
+  const debugNoteInput = document.getElementById('debug-note-input') as HTMLTextAreaElement;
+  const debugSaveNote = document.getElementById('debug-save-note') as HTMLButtonElement;
+  const debugNoteStatus = document.getElementById('debug-note-status') as HTMLElement;
+
+  let debugRecorder:   MediaRecorder | null = null;
+  let debugStreamDest: MediaStreamAudioDestinationNode | null = null;
+  let debugActive = false;
+
+  function updateDebugParams(): void {
+    const baseDepth = MOOD_BASE_AM_DEPTH[selectedMood] ?? MOOD_BASE_AM_DEPTH.focus;
+    const sliderPct = getCurrentModulationPercent();
+    const scale = sliderPct / 100;
+    const target = modTarget;
+    const musicDepth = target === 'music' || target === 'both'
+      ? Math.min(baseDepth * 0.5 * scale, 0.25)
+      : 0;
+    const soundscapeDepth = target === 'soundscape' || target === 'both'
+      ? Math.min(baseDepth * (0.8 + scale * 2.4), 0.45)
+      : 0;
+    debugParams.textContent = `Mood=${selectedMood} · target=${target} · slider=${sliderPct}% · base AM=${Math.round(baseDepth * 100)}% · music depth≈${musicDepth.toFixed(3)} · soundscape depth≈${soundscapeDepth.toFixed(3)} · session=${currentSessionId ?? 'none'}`;
+  }
+
+  function applyThirtyPercentPreset(): void {
+    const baseDepth = MOOD_BASE_AM_DEPTH[selectedMood] ?? MOOD_BASE_AM_DEPTH.focus;
+    const scaledPct = Math.round(Math.min(150, Math.max(0, (FOCUS_30_PERCENT_AM_DEPTH / baseDepth) * 100)));
+    modTarget = 'both';
+    document.querySelectorAll('.mod-pill').forEach((btn) => {
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.target === 'both');
+    });
+    if (modDepthRow) modDepthRow.style.display = '';
+    if (modHelper) modHelper.textContent = MOD_HELPERS.both;
+    if (modulationSlider) {
+      modulationSlider.value = String(scaledPct);
+      if (modulationValue) modulationValue.textContent = `${scaledPct}%`;
+    }
+    applyModulation();
+    debugNoteStatus.textContent = '30% bandpass preset armed for this mood.';
+  }
+
+  function scheduleNextChunk() {
+    if (!debugActive || !debugRecorder || !debugStreamDest) return;
+    const chunks: BlobPart[] = [];
+    debugRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    debugRecorder.onstop = async () => {
+      if (!debugActive) return;
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      debugResult.textContent = 'Analyzing…';
+      try {
+        const res = await fetch('/api/audio-debug', { method: 'POST', body: blob });
+        if (res.ok) {
+          const data = await res.json() as { analysis?: string };
+          debugResult.textContent = data.analysis ?? 'No analysis returned';
+        } else {
+          debugResult.textContent = `Analysis failed (${res.status})`;
+        }
+      } catch {
+        debugResult.textContent = 'Network error during analysis';
+      }
+      debugStatus.textContent = 'Listening…';
+      scheduleNextChunk();
+    };
+    debugRecorder.start();
+    setTimeout(() => { if (debugRecorder?.state === 'recording') debugRecorder.stop(); }, 10_000);
+  }
+
+  function startDebugListen() {
+    const analyser = engine?.getAnalyser();
+    if (!analyser) {
+      debugStatus.textContent = 'No audio — start playback first';
+      debugToggle.checked = false;
+      return;
+    }
+    const ctx = analyser.context as AudioContext;
+    debugStreamDest = ctx.createMediaStreamDestination();
+    analyser.connect(debugStreamDest);
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : 'audio/webm';
+    debugRecorder = new MediaRecorder(debugStreamDest.stream, { mimeType });
+    debugActive = true;
+    debugPanel.style.display = '';
+    debugStatus.textContent = 'Recording first chunk…';
+    updateDebugParams();
+    scheduleNextChunk();
+  }
+
+  function stopDebugListen() {
+    debugActive = false;
+    if (debugRecorder && debugRecorder.state !== 'inactive') {
+      debugRecorder.ondataavailable = null;
+      debugRecorder.onstop = null;
+      debugRecorder.stop();
+    }
+    debugRecorder = null;
+    if (debugStreamDest) {
+      try { engine?.getAnalyser()?.disconnect(debugStreamDest); } catch { /* ok */ }
+      debugStreamDest = null;
+    }
+    debugStatus.textContent = 'Off';
+    debugPanel.style.display = 'none';
+    debugResult.textContent = 'Waiting for audio chunk…';
+  }
+
+  debugAmOff?.addEventListener('click', () => {
+    modTarget = 'off';
+    document.querySelectorAll('.mod-pill').forEach((btn) => {
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.target === 'off');
+    });
+    if (modDepthRow) modDepthRow.style.display = 'none';
+    if (modHelper) modHelper.textContent = MOD_HELPERS.off;
+    applyModulation();
+    updateDebugParams();
+    debugNoteStatus.textContent = 'AM modulation turned off for A/B testing.';
+  });
+
+  debugAmPreset?.addEventListener('click', () => {
+    applyThirtyPercentPreset();
+  });
+
+  debugSaveNote?.addEventListener('click', async () => {
+    const note = debugNoteInput.value.trim();
+    if (!note) {
+      debugNoteStatus.textContent = 'Enter a note first.';
+      return;
+    }
+    const saved = await saveSessionNote(note, {
+      mood: selectedMood,
+      modTarget,
+      modulationPercent: getCurrentModulationPercent(),
+      playing: isPlaying,
+      source: selectedSource,
+    });
+    debugNoteStatus.textContent = saved ? 'Validation note saved to the current session.' : 'Could not save note.';
+    if (saved) debugNoteInput.value = '';
+  });
+
+  debugToggle?.addEventListener('change', () => {
+    if (debugToggle.checked) startDebugListen();
+    else stopDebugListen();
+  });
+
+  // Stop debug recorder when engine stops so chunks aren't dangling
+  window.addEventListener('argobeat-state-change', ((e: CustomEvent) => {
+    if (!e.detail.isPlaying && !e.detail.isPaused && debugToggle.checked) {
+      stopDebugListen();
+      debugToggle.checked = false;
+    }
+  }) as EventListener);
+
+  window.addEventListener('argobeat:sessionState', (() => {
+    updateDebugParams();
+  }) as EventListener);
+
+  updateDebugParams();
+  emitSessionState();
+</script>
+
+<style>
+  .player-shell {
+    box-sizing: border-box;
+    background: var(--color-bg-glass);
+    backdrop-filter: blur(var(--blur-glass));
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px;
+    max-width: 720px;
+    width: 92vw;
+    margin: 0 auto;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .player-section {
+    margin-bottom: 18px;
+  }
+
+  .player-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .player-shell-legacy .drawer-toggle {
+    display: none !important;
+  }
+
+  .player-shell-legacy .drawer-content {
+    max-height: none;
+    opacity: 1;
+    padding: 0;
+    overflow: visible;
+  }
+
+  /* Source Toggle + Soundscape Picker */
+  .source-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .boost-panel {
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .boost-chip {
+    align-self: flex-start;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .boost-chip.active {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(129, 140, 248, 0.7);
+    box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.18);
+  }
+
+  .boost-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .boost-helper {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+    max-width: 280px;
+  }
+
+  .source-toggle {
+    display: flex;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .source-tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--color-text-secondary);
+    transition: all 0.2s;
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .source-tab.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-primary);
+  }
+
+  .source-tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-text-primary);
+  }
+
+  .source-tab:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .source-tab:disabled:hover {
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+
+  .soundscape-picker {
+    flex: 1;
+  }
+
+  .soundscape-picker select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    color-scheme: dark;
+  }
+
+  .soundscape-picker select:focus {
+    border-color: var(--color-accent);
+    outline: none;
+  }
+
+  [data-theme='light'] .soundscape-picker select {
+    color-scheme: light;
+  }
+
+  .soundscape-picker option {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+  }
+
+  .soundscape-picker option:checked {
+    background: rgba(59, 130, 246, 0.35);
+    color: var(--color-text-primary);
+  }
+
+  .soundscape-helper {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Transport Controls */
+  .controls-section {
+    text-align: center;
+  }
+
+  .transport-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 12px;
+  }
+
+  .transport-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: white;
+  }
+
+  .transport-btn:hover:not(:disabled) {
+    transform: scale(1.08);
+  }
+
+  .transport-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  .transport-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .transport-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  .play-btn {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    box-shadow: 0 4px 20px var(--color-accent-glow);
+  }
+
+  .play-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 28px var(--color-accent-glow);
+  }
+
+  .play-btn.active-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 4px 20px var(--color-accent-glow);
+    }
+    50% {
+      box-shadow: 0 4px 32px var(--color-accent-glow), 0 0 48px rgba(99, 102, 241, 0.15);
+    }
+  }
+
+  .pause-btn,
+  .stop-btn,
+  .skip-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .pause-btn:hover:not(:disabled),
+  .stop-btn:hover:not(:disabled),
+  .skip-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .skip-btn {
+    color: rgba(226, 232, 240, 0.92);
+  }
+
+  .skip-btn:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .status-line {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.01em;
+  }
+
+  .track-meta {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    opacity: 0.65;
+    letter-spacing: 0.02em;
+    margin-top: 3px;
+    min-height: 1em;
+  }
+
+  /* Modulation indicator — pulsing dot + Hz readout */
+  .mod-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+  }
+  .mod-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-primary, #3b82f6);
+    display: inline-block;
+  }
+  .mod-dot.active {
+    animation: mod-pulse 1.2s ease-in-out infinite;
+    box-shadow: 0 0 6px var(--color-primary, #3b82f6);
+  }
+  @keyframes mod-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); box-shadow: 0 0 10px var(--color-primary, #3b82f6); }
+  }
+  .mod-hz {
+    opacity: 0.6;
+    letter-spacing: 0.02em;
+  }
+
+  /* Track card */
+  .track-card {
+    margin-top: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+
+  .track-card-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .track-card-header:hover { background: rgba(255,255,255,0.03); }
+
+  .track-card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .track-card-name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 13px;
+  }
+
+  .track-card-neural {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-accent);
+    background: rgba(99,102,241,0.12);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 999px;
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+
+  .track-card-genre {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .track-card-chevron {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .track-card-body {
+    padding: 0 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 10px;
+  }
+
+  .tc-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .tc-row-inline {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tc-row-inline span {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .tc-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    min-width: 90px;
+  }
+
+  .tc-row-inline .tc-label { min-width: 0; }
+
+  .tc-value { color: var(--color-text-primary); }
+
+  .tc-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .tag {
+    font-size: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: var(--color-text-secondary);
+  }
+
+  /* TABLET — 768px to 1023px */
+  @media (max-width: 1023px) and (min-width: 768px) {
+    .player-shell {
+      max-width: 100%;
+      width: 100%;
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+    }
+    .source-row {
+      flex-wrap: nowrap;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .source-toggle {
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+    }
+    .source-tab {
+      padding: 6px 10px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .soundscape-picker {
+      flex: 1;
+      min-width: 0;
+    }
+    .soundscape-picker select {
+      font-size: 12px;
+      padding: 7px 28px 7px 10px;
+    }
+    .boost-panel {
+      flex: 0 0 auto;
+      min-width: auto;
+    }
+    .boost-chip {
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    .boost-helper {
+      display: none;
+    }
+    .modulation-panel {
+      width: 100%;
+      min-width: auto;
+    }
+    .mod-target-pills {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    .mod-pill {
+      font-size: 10px;
+      text-align: center;
+    }
+    .analysis-toggle-row {
+      display: none;
+    }
+    #analysis-section {
+      display: none !important;
+    }
+    #advisor-section {
+      display: none !important;
+    }
+    .debug-card {
+      display: none;
+    }
+    .play-btn {
+      width: 52px;
+      height: 52px;
+    }
+    .pause-btn, .stop-btn, .skip-btn {
+      width: 38px;
+      height: 38px;
+    }
+    .status-line {
+      font-size: 12px;
+    }
+  }
+
+  /* PHONE — < 768px */
+  @media (max-width: 767px) {
+    .player-shell {
+      padding: 12px 10px;
+      padding-bottom: 100px;
+      width: calc(100vw - 16px);
+      border-radius: 12px;
+      max-width: calc(100vw - 16px);
+    }
+    .drawer-toggle {
+      display: flex !important;
+      width: 100%;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--color-border-glass);
+      border-radius: var(--radius-sm);
+      color: var(--color-text-primary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .drawer-toggle:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .drawer-toggle-icon {
+      font-size: 16px;
+      opacity: 0.6;
+    }
+    .drawer-toggle-label {
+      flex: 1;
+      text-align: left;
+    }
+    .drawer-toggle-active-source {
+      font-size: 11px;
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .drawer-toggle-chevron {
+      transition: transform 0.25s ease;
+      opacity: 0.5;
+    }
+    .drawer-toggle[aria-expanded="true"] .drawer-toggle-chevron {
+      transform: rotate(180deg);
+    }
+    .drawer-content {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.25s ease;
+      padding: 0;
+    }
+    .drawer-content.is-open {
+      max-height: 600px;
+      opacity: 1;
+      padding: 10px 0 4px;
+    }
+    .drawer-content .source-toggle {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+    }
+    .drawer-content .source-tab {
+      padding: 7px 6px;
+      font-size: 10px;
+      min-width: 0;
+      text-align: center;
+      border-radius: 4px;
+    }
+    .drawer-content .soundscape-picker {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .drawer-content .soundscape-picker select {
+      font-size: 12px;
+      padding: 10px 28px 10px 10px;
+    }
+    .drawer-content .boost-panel {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .drawer-content .boost-chip {
+      width: 100%;
+      text-align: center;
+    }
+    .drawer-content .modulation-panel {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .drawer-content .mod-target-pills {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px;
+    }
+    .drawer-content .mod-pill {
+      font-size: 9px;
+      padding: 4px 4px;
+      text-align: center;
+    }
+    .drawer-content .boost-helper {
+      display: none;
+    }
+    .visualizer-container {
+      height: 48px;
+      border-radius: 8px;
+    }
+    .controls-section {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: var(--color-bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--color-border-glass);
+      padding: 10px 16px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      margin-bottom: 0;
+      text-align: center;
+    }
+    .transport-controls {
+      width: 100%;
+      margin: 0 auto 5px;
+      gap: 14px;
+      justify-content: center;
+    }
+    .transport-btn {
+      flex: 0 0 auto;
+      min-width: 42px;
+      min-height: 42px;
+    }
+    .play-btn {
+      width: 52px;
+      height: 52px;
+    }
+    .pause-btn,
+    .stop-btn,
+    .skip-btn {
+      width: 42px;
+      height: 42px;
+    }
+    .skip-btn {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.96);
+    }
+    .skip-btn svg {
+      width: 23px;
+      height: 23px;
+    }
+    .pause-btn svg,
+    .stop-btn svg {
+      transform: scale(0.9);
+    }
+    .status-line {
+      font-size: 11px;
+      line-height: 1.3;
+      max-width: 260px;
+      margin: 0 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .track-card {
+      margin-top: 4px;
+      font-size: 11px;
+    }
+    .track-card-header {
+      padding: 6px 8px;
+    }
+    .track-card-name {
+      font-size: 11px;
+    }
+    .track-card-neural {
+      font-size: 9px;
+    }
+    .track-card-genre {
+      display: none;
+    }
+    .track-card-body {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .tc-label {
+      min-width: 60px;
+      font-size: 9px;
+    }
+    .tc-value {
+      font-size: 11px;
+    }
+    .tc-row-inline {
+      flex-direction: column;
+      gap: 6px;
+    }
+    .feedback-bar {
+      padding: 6px 10px;
+      gap: 6px;
+    }
+    .thumbs-btn {
+      padding: 4px 8px;
+      font-size: 0.9rem;
+    }
+    .learning-progress {
+      display: none;
+    }
+    .analysis-toggle-row {
+      display: none;
+    }
+    #analysis-section {
+      display: none !important;
+    }
+    #advisor-section {
+      display: none !important;
+    }
+    .debug-card {
+      display: none;
+    }
+    .timer-section {
+      text-align: center;
+    }
+    .timer-container {
+      width: 80px;
+      height: 80px;
+    }
+    .time-display {
+      font-size: 16px;
+    }
+    .time-label {
+      font-size: 9px;
+    }
+    .volume-section {
+      margin-top: 8px;
+    }
+    .volume-controls {
+      padding: 8px 10px 10px;
+      border-radius: 10px;
+    }
+    .volume-header label {
+      font-size: 10px;
+    }
+    .volume-value {
+      font-size: 13px;
+      min-width: 36px;
+    }
+    .slider {
+      height: 8px;
+    }
+    .slider::-webkit-slider-thumb {
+      width: 22px;
+      height: 22px;
+    }
+    .slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+    }
+    button, [role="tab"], select, input[type="range"] {
+      min-height: 44px;
+    }
+
+    .player-shell-legacy {
+      padding: 20px 16px;
+      padding-bottom: 20px;
+      width: 96vw;
+      max-width: 720px;
+      border-radius: 16px;
+    }
+
+    .player-shell-legacy .source-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .player-shell-legacy .drawer-content {
+      display: contents;
+    }
+
+    .player-shell-legacy .source-toggle {
+      align-self: flex-start;
+      display: flex;
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .player-shell-legacy .source-toggle::-webkit-scrollbar {
+      display: none;
+    }
+
+    .player-shell-legacy .source-tab {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .player-shell-legacy .controls-section {
+      position: static;
+      z-index: auto;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-top: 0;
+      padding: 0;
+      margin-bottom: 20px;
+    }
+
+    .player-shell-legacy .transport-controls {
+      margin-bottom: 12px;
+      gap: 16px;
+    }
+
+    .player-shell-legacy .play-btn {
+      width: 56px;
+      height: 56px;
+    }
+
+    .player-shell-legacy .pause-btn,
+    .player-shell-legacy .stop-btn,
+    .player-shell-legacy .skip-btn {
+      width: 40px;
+      height: 40px;
+    }
+
+    .player-shell-legacy .status-line {
+      max-width: none;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+
+    .player-shell-legacy .analysis-toggle-row {
+      display: flex;
+    }
+
+    .player-shell-legacy .timer-container {
+      width: 108px;
+      height: 108px;
+    }
+
+    .player-shell-legacy .time-display {
+      font-size: 20px;
+    }
+  }
+
+  /* SMALL PHONE — < 480px */
+  @media (max-width: 480px) {
+    .player-shell {
+      padding: 10px 8px;
+      padding-bottom: 88px;
+    }
+    .drawer-toggle {
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .drawer-content .source-toggle {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+    .drawer-content .source-tab {
+      font-size: 9px;
+      padding: 6px 4px;
+    }
+    .drawer-content .mod-target-pills {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .controls-section {
+      padding: 8px 12px;
+      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    }
+    .transport-controls {
+      gap: 11px;
+    }
+    .play-btn {
+      width: 50px;
+      height: 50px;
+    }
+    .pause-btn, .stop-btn, .skip-btn {
+      width: 40px;
+      height: 40px;
+    }
+    .timer-container {
+      width: 70px;
+      height: 70px;
+    }
+    .time-display {
+      font-size: 14px;
+    }
+    .volume-controls {
+      padding: 6px 8px 8px;
+    }
+    .slider {
+      height: 6px;
+    }
+    .slider::-webkit-slider-thumb {
+      width: 20px;
+      height: 20px;
+    }
+    .slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+    }
+    .track-card-body {
+      max-height: 150px;
+    }
+
+    .player-shell-legacy {
+      padding: 18px 14px;
+      padding-bottom: 18px;
+    }
+
+    .player-shell-legacy .play-btn {
+      width: 52px;
+      height: 52px;
+    }
+
+    .player-shell-legacy .pause-btn,
+    .player-shell-legacy .stop-btn,
+    .player-shell-legacy .skip-btn {
+      width: 38px;
+      height: 38px;
+    }
+  }
+
+  /* iOS Safe Area */
+  @supports (padding: env(safe-area-inset-top)) {
+    .player-shell {
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+    }
+    @media (max-width: 767px) {
+      .player-shell {
+        padding-left: max(10px, env(safe-area-inset-left));
+        padding-right: max(10px, env(safe-area-inset-right));
+        padding-top: max(12px, env(safe-area-inset-top));
+      }
+      .controls-section {
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+  }
+
+  @media (max-width: 767px) {
+    .controls-section .transport-controls {
+      width: 220px !important;
+      max-width: calc(100vw - 56px);
+      gap: 8px !important;
+      justify-content: center !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+
+    .controls-section .play-btn {
+      width: 50px !important;
+      height: 50px !important;
+    }
+
+    .controls-section .pause-btn,
+    .controls-section .stop-btn,
+    .controls-section .skip-btn {
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+    }
+
+    .controls-section .skip-btn svg {
+      width: 22px !important;
+      height: 22px !important;
+    }
+  }
+
+  /* Feedback bar (thumbs up/down) */
+  .feedback-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+  }
+
+  .thumbs-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0.4rem 0.65rem;
+    cursor: pointer;
+    font-size: 1.15rem;
+    transition: all 0.2s ease;
+    opacity: 0.65;
+  }
+
+  .thumbs-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    opacity: 1;
+  }
+
+  .thumbs-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .thumbs-btn.rated {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+  .thumbs-up.rated {
+    border-color: #4ade80;
+  }
+
+  .thumbs-down.rated {
+    border-color: #f87171;
+  }
+
+  .learning-progress {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.8rem;
+  }
+
+  /* Modulation slider */
+  .modulation-panel {
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .modulation-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .modulation-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modulation-value {
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .modulation-slider {
+    width: 100%;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+    height: 4px;
+  }
+
+  .mod-target-pills {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .mod-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mod-pill:hover { border-color: rgba(255,255,255,0.25); color: var(--color-text); }
+  .mod-pill.active {
+    background: rgba(99,102,241,0.18);
+    border-color: rgba(99,102,241,0.5);
+    color: #a5b4fc;
+  }
+
+  /* Advisor */
+  .advisor-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.06) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .advisor-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .advisor-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  .advisor-status {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    flex: 1;
+  }
+
+  .advisor-auto-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .advisor-auto-label input {
+    accent-color: #a78bfa;
+  }
+
+  .advisor-ask-btn {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    background: rgba(139, 92, 246, 0.1);
+    color: #c4b5fd;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .advisor-ask-btn:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(167, 139, 250, 0.5);
+  }
+
+  .advisor-ask-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .advisor-suggestion {
+    font-size: 13px;
+    color: var(--color-text-primary);
+    line-height: 1.5;
+    min-height: 1.5em;
+  }
+
+  .advisor-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .advisor-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .advisor-apply {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #c4b5fd;
+  }
+
+  .advisor-apply:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(167, 139, 250, 0.6);
+  }
+
+  .advisor-dismiss {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+  }
+
+  .advisor-dismiss:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-text-primary);
+  }
+
+  /* Audio Debug Panel */
+  .debug-card {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .debug-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .analysis-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 0;
+  }
+  .analysis-toggle-btn {
+    font-size: 11px;
+    color: #94a3b8;
+    background: none;
+    border: 1px solid rgba(148,163,184,0.2);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .analysis-toggle-btn:hover { color: #e2e8f0; border-color: rgba(148,163,184,0.5); }
+
+  #advisor-section,
+  .debug-card {
+    display: none !important;
+  }
+
+  @media (max-width: 767px) {
+    .analysis-toggle-row {
+      display: none !important;
+    }
+  }
+
+  .debug-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  .debug-toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .debug-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .debug-toggle-track {
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+    position: relative;
+    transition: background 0.2s;
+  }
+
+  .debug-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .debug-toggle-input:checked + .debug-toggle-track {
+    background: rgba(16, 185, 129, 0.35);
+    border-color: rgba(16, 185, 129, 0.5);
+  }
+
+  .debug-toggle-input:checked + .debug-toggle-track::after {
+    transform: translateX(14px);
+    background: #6ee7b7;
+  }
+
+  .debug-status {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    flex: 1;
+  }
+
+  .debug-panel {
+    padding-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .debug-result {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    font-family: ui-monospace, monospace;
+    word-break: break-word;
+  }
+
+  .debug-actions,
+  .debug-note-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .debug-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(15, 23, 42, 0.65);
+    color: #cbd5e1;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .debug-chip:hover {
+    border-color: rgba(96, 165, 250, 0.5);
+    color: #e2e8f0;
+  }
+
+  .debug-params,
+  .debug-note-status {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.45;
+  }
+
+  .debug-note-input {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.72);
+    color: #e2e8f0;
+    padding: 8px 10px;
+    resize: vertical;
+    min-height: 72px;
+  }
+</style>

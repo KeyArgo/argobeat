@@ -1,0 +1,23 @@
+name = "argobeat-audio-analyze"
+main = "audio-analyze.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "argobeat-analysis"
+database_id = "2b3ae691-3a71-4aa2-8443-558b55277853"
+
+[env.staging]
+name = "argobeat-audio-analyze-staging"
+
+[env.staging.ai]
+binding = "AI"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "argobeat-analysis"
+database_id = "2b3ae691-3a71-4aa2-8443-558b55277853"

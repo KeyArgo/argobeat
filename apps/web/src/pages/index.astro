@@ -1,0 +1,466 @@
+---
+import Base from '../layouts/Base.astro';
+import Navbar from '../components/layout/Navbar.astro';
+---
+
+<Base title="ArgoBeat — Music for Focus, Sleep, and Meditation Routines" description="Music-first focus audio with subtle target-rate modulation. No accounts or tracking.">
+  <Navbar currentPage="home" />
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">ArgoBeat</h1>
+        <p class="hero-tagline">Music for focus, sleep, and meditation routines</p>
+        <p class="hero-description">
+          Curated instrumental tracks and ambient beds with subtle target-rate
+          audio modulation. Pick a mood, press play, and settle into the session.
+        </p>
+        <a href="/app" class="cta-button">
+          Start Listening
+          <svg class="cta-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-orb orb-1"></div>
+        <div class="hero-orb orb-2"></div>
+        <div class="hero-orb orb-3"></div>
+      </div>
+    </section>
+
+    <!-- Feature Highlights -->
+    <section class="features">
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          </div>
+          <h3>5 Mood Modes</h3>
+          <p>Focus, Deep Work, Relax, Meditate, and Sleep. Each mode uses a practical target band and sound palette for that routine.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </div>
+          <h3>Target-Rate Modulation</h3>
+          <p>No harsh carrier tones. The engine applies subtle modulation to listenable audio so the session has a measurable rhythmic marker.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <h3>Zero Tracking</h3>
+          <p>No accounts or tracking. Audio runs locally in the browser, and optional operator tools stay separate from the public listening flow.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+            </svg>
+          </div>
+          <h3>Browser First</h3>
+          <p>Built with the Web Audio API and a deployable audio catalog. Lightweight, inspectable, and designed to stay inexpensive to host.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Moods Preview -->
+    <section class="moods-preview">
+      <h2 class="section-title">Five Moods, One Engine</h2>
+      <p class="section-subtitle">Each mood maps to a target audio modulation band and a curated set of music and nature beds, from rain and rivers to ocean, wind, forest birds, and night insects.</p>
+      <div class="moods-strip">
+        <div class="mood-preview" style="--mood-from: #3b82f6; --mood-to: #1d4ed8;">
+          <span class="mood-preview-name">Focus</span>
+          <span class="mood-preview-desc">25 min</span>
+        </div>
+        <div class="mood-preview" style="--mood-from: #6366f1; --mood-to: #4338ca;">
+          <span class="mood-preview-name">Deep Work</span>
+          <span class="mood-preview-desc">90 min</span>
+        </div>
+        <div class="mood-preview" style="--mood-from: #10b981; --mood-to: #059669;">
+          <span class="mood-preview-name">Relax</span>
+          <span class="mood-preview-desc">20 min</span>
+        </div>
+        <div class="mood-preview" style="--mood-from: #a855f7; --mood-to: #7e22ce;">
+          <span class="mood-preview-name">Meditate</span>
+          <span class="mood-preview-desc">20 min</span>
+        </div>
+        <div class="mood-preview" style="--mood-from: #475569; --mood-to: #1e293b;">
+          <span class="mood-preview-name">Sleep</span>
+          <span class="mood-preview-desc">30 min</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="bottom-cta">
+      <h2>Ready to focus?</h2>
+      <a href="/app" class="cta-button cta-large">
+        Open the App
+        <svg class="cta-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>ArgoBeat.</p>
+    </footer>
+  </main>
+</Base>
+
+<style>
+  /* ─── Hero ─── */
+  .hero {
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 100px 40px 80px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-title {
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 40%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-tagline {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+    letter-spacing: -0.01em;
+  }
+
+  .hero-description {
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    max-width: 520px;
+    margin: 0 auto 40px;
+    line-height: 1.7;
+    opacity: 0.8;
+  }
+
+  .cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+    color: white;
+    padding: 14px 32px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 16px;
+    text-decoration: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px var(--color-accent-glow);
+  }
+
+  .cta-button:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px var(--color-accent-glow);
+  }
+
+  .cta-arrow {
+    transition: transform 0.2s;
+  }
+
+  .cta-button:hover .cta-arrow {
+    transform: translateX(3px);
+  }
+
+  /* Animated background orbs */
+  .hero-visual {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+  }
+
+  .orb-1 {
+    width: 400px;
+    height: 400px;
+    background: #6366f1;
+    top: -100px;
+    left: -50px;
+    animation: float-orb 20s ease-in-out infinite;
+  }
+
+  .orb-2 {
+    width: 300px;
+    height: 300px;
+    background: #3b82f6;
+    bottom: -80px;
+    right: -40px;
+    animation: float-orb 25s ease-in-out infinite reverse;
+  }
+
+  .orb-3 {
+    width: 200px;
+    height: 200px;
+    background: #a855f7;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: float-orb 18s ease-in-out infinite;
+  }
+
+  @keyframes float-orb {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(20px, -15px); }
+    50% { transform: translate(-10px, 20px); }
+    75% { transform: translate(15px, 10px); }
+  }
+
+  /* ─── Features ─── */
+  .features {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 40px 80px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+
+  .feature-card {
+    background: var(--color-bg-glass);
+    backdrop-filter: blur(var(--blur-glass));
+    border: 1px solid var(--color-border-glass);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(99, 102, 241, 0.15);
+    transform: translateY(-3px);
+  }
+
+  .feature-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-accent);
+    margin-bottom: 16px;
+  }
+
+  .feature-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ─── Moods Preview ─── */
+  .moods-preview {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 40px 80px;
+    text-align: center;
+  }
+
+  .section-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .section-subtitle {
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    margin-bottom: 40px;
+  }
+
+  .moods-strip {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .mood-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 20px 28px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--mood-from) 15%, transparent), color-mix(in srgb, var(--mood-to) 8%, transparent));
+    border: 1px solid color-mix(in srgb, var(--mood-from) 20%, transparent);
+    transition: all 0.3s;
+    min-width: 120px;
+  }
+
+  .mood-preview:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--mood-from) 40%, transparent);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--mood-from) 15%, transparent);
+  }
+
+  .mood-preview-name {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .mood-preview-desc {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+  }
+
+  /* ─── Bottom CTA ─── */
+  .bottom-cta {
+    text-align: center;
+    padding: 60px 40px 80px;
+  }
+
+  .bottom-cta h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+  }
+
+  .cta-large {
+    padding: 16px 40px;
+    font-size: 18px;
+  }
+
+  /* ─── Footer ─── */
+  .footer {
+    text-align: center;
+    padding: 32px 40px;
+    border-top: 1px solid var(--color-border-glass);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    opacity: 0.7;
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 768px) {
+    .hero {
+      padding: 60px 24px 60px;
+    }
+
+    .hero-title {
+      font-size: 40px;
+    }
+
+    .hero-tagline {
+      font-size: 18px;
+    }
+
+    .hero-description {
+      font-size: 15px;
+    }
+
+    .features {
+      padding: 40px 20px 60px;
+    }
+
+    .features-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .moods-preview {
+      padding: 40px 20px 60px;
+    }
+
+    .section-title {
+      font-size: 24px;
+    }
+
+    .moods-strip {
+      gap: 10px;
+    }
+
+    .mood-preview {
+      padding: 16px 20px;
+      min-width: 100px;
+    }
+
+    .bottom-cta {
+      padding: 40px 20px 60px;
+    }
+
+    .bottom-cta h2 {
+      font-size: 24px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero {
+      padding: 48px 16px 48px;
+    }
+
+    .hero-title {
+      font-size: 32px;
+    }
+
+    .hero-tagline {
+      font-size: 16px;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .moods-strip {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .mood-preview {
+      width: 100%;
+      max-width: 280px;
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+</style>

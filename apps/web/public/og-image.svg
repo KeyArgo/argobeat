@@ -1,0 +1,30 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ArgoBeat">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="40" x2="1080" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#050816"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="440" y1="140" x2="780" y2="450" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <filter id="blur" x="-40" y="-40" width="1280" height="710" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="24" />
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="260" cy="180" r="160" fill="#2563EB" opacity="0.22" filter="url(#blur)"/>
+  <circle cx="920" cy="450" r="190" fill="#A855F7" opacity="0.2" filter="url(#blur)"/>
+  <circle cx="610" cy="310" r="240" fill="url(#accent)" opacity="0.12" filter="url(#blur)"/>
+  <g opacity="0.9">
+    <circle cx="600" cy="300" r="118" stroke="#CBD5E1" stroke-opacity="0.4" stroke-width="4"/>
+    <path d="M525 304C541 248 573 220 600 220C627 220 659 248 675 304C659 360 627 388 600 388C573 388 541 360 525 304Z" fill="#E2E8F0" fill-opacity="0.07" stroke="url(#accent)" stroke-width="4"/>
+    <path d="M510 304H690" stroke="#93C5FD" stroke-opacity="0.7" stroke-width="4" stroke-linecap="round"/>
+    <path d="M600 214V390" stroke="#93C5FD" stroke-opacity="0.35" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="80" y="120" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600" letter-spacing="0.08em">ARGOBEAT</text>
+  <text x="80" y="190" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="72" font-weight="800">Focus, sleep,</text>
+  <text x="80" y="264" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="72" font-weight="800">and meditation audio</text>
+  <text x="80" y="344" fill="#CBD5E1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="400">Subtle target-rate modulation. No accounts.</text>
+  <text x="80" y="392" fill="#CBD5E1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="400">No tracking.</text>
+</svg>
